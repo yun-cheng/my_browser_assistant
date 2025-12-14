@@ -14,7 +14,7 @@ const valueInputs = Array.from(document.querySelectorAll('[data-value-setting]')
 const valueInputMap = new Map(valueInputs.map((input) => [input.dataset.valueSetting, input]));
 const overlayPosXInput = document.getElementById('overlayPosX');
 const overlayPosYInput = document.getElementById('overlayPosY');
-const rewindAdvanceStepsInput = document.getElementById('rewindAdvanceSteps');
+const rewindAdvanceStepPresetsInput = document.getElementById('rewindAdvanceStepPresets');
 
 let currentSettings = { ...DEFAULT_SETTINGS };
 let unsubscribe = null;
@@ -53,8 +53,8 @@ function wireEvents() {
     input.addEventListener('input', persistSettingsFromForm);
   });
 
-  if (rewindAdvanceStepsInput) {
-    rewindAdvanceStepsInput.addEventListener('change', persistSettingsFromForm);
+  if (rewindAdvanceStepPresetsInput) {
+    rewindAdvanceStepPresetsInput.addEventListener('change', persistSettingsFromForm);
   }
   showCurrentSpeedInput.addEventListener('change', persistSettingsFromForm);
 
@@ -77,8 +77,8 @@ function render(settings) {
   overlayPosXInput.value = formatPositionValue(position.ratioX);
   overlayPosYInput.value = formatPositionValue(position.ratioY);
   showCurrentSpeedInput.checked = Boolean(settings.showCurrentSpeed);
-  if (rewindAdvanceStepsInput) {
-    rewindAdvanceStepsInput.value = formatStepList(settings.rewindAdvanceSteps);
+  if (rewindAdvanceStepPresetsInput) {
+    rewindAdvanceStepPresetsInput.value = formatStepList(settings.rewindAdvanceStepPresets);
   }
 }
 
@@ -146,9 +146,9 @@ function collectFormSettings() {
     ratioY: clampRatio(parseFloat(overlayPosYInput.value) / 100)
   };
   settings.showCurrentSpeed = showCurrentSpeedInput.checked;
-  settings.rewindAdvanceSteps = parseStepListInput(
-    rewindAdvanceStepsInput?.value,
-    currentSettings?.rewindAdvanceSteps ?? DEFAULT_SETTINGS.rewindAdvanceSteps
+  settings.rewindAdvanceStepPresets = parseStepListInput(
+    rewindAdvanceStepPresetsInput?.value,
+    currentSettings?.rewindAdvanceStepPresets ?? DEFAULT_SETTINGS.rewindAdvanceStepPresets
   );
 
   return settings;
@@ -178,13 +178,13 @@ function clampRatio(value) {
 
 function formatStepList(steps) {
   if (!Array.isArray(steps) || !steps.length) {
-    return (DEFAULT_SETTINGS.rewindAdvanceSteps || []).join(', ');
+    return (DEFAULT_SETTINGS.rewindAdvanceStepPresets || []).join(', ');
   }
   return steps.join(', ');
 }
 
 function parseStepListInput(value, fallback) {
-  const fallbackList = Array.isArray(fallback) && fallback.length ? fallback : DEFAULT_SETTINGS.rewindAdvanceSteps;
+  const fallbackList = Array.isArray(fallback) && fallback.length ? fallback : DEFAULT_SETTINGS.rewindAdvanceStepPresets;
   if (typeof value !== 'string') {
     return [...fallbackList];
   }

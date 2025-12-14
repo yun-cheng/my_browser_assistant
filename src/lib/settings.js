@@ -6,12 +6,14 @@ export const DEFAULT_SETTINGS = {
   increaseKey: 'd',
   rewindKey: 'z',
   advanceKey: 'x',
-  cycleRewindAdvanceKey: 'e',
+  switchRewindAdvanceKey: 'e',
   toggleOverlayKey: 'v',
-  speedStep: 0.1,
-  rewindAdvanceSteps: [2, 5, 10],
-  rewindAdvanceCurrentStep: 10,
+  speedAdjustmentStep: 0.1,
+  rewindAdvanceStepPresets: [2, 5, 10],
+  rewindAdvanceStep: 10,
   preferSpeed: 1.3,
+  fastForwardSpeed: 2,
+  slowMotionSpeed: 0.4,
   overlayFontSize: 18,
   overlayBackgroundAlpha: 0.5,
   overlayPosition: { x: 0, y: 0, ratioX: 0.01, ratioY: 0.05 },
@@ -26,7 +28,7 @@ function normalizeSettings(settings) {
     'increaseKey',
     'rewindKey',
     'advanceKey',
-    'cycleRewindAdvanceKey',
+    'switchRewindAdvanceKey',
     'toggleOverlayKey'
   ];
 
@@ -39,25 +41,42 @@ function normalizeSettings(settings) {
     }
   });
 
-  normalized.speedStep = sanitizeNumber(normalized.speedStep, DEFAULT_SETTINGS.speedStep, 0.1, 16);
-  normalized.rewindAdvanceSteps = sanitizeStepList(
-    normalized.rewindAdvanceSteps,
-    DEFAULT_SETTINGS.rewindAdvanceSteps
+  normalized.speedAdjustmentStep = sanitizeNumber(
+    normalized.speedAdjustmentStep,
+    DEFAULT_SETTINGS.speedAdjustmentStep,
+    0.1,
+    16
   );
-  normalized.rewindAdvanceCurrentStep = sanitizeNumber(
-    normalized.rewindAdvanceCurrentStep,
-    DEFAULT_SETTINGS.rewindAdvanceCurrentStep,
+  normalized.rewindAdvanceStepPresets = sanitizeStepList(
+    normalized.rewindAdvanceStepPresets,
+    DEFAULT_SETTINGS.rewindAdvanceStepPresets
+  );
+  normalized.rewindAdvanceStep = sanitizeNumber(
+    normalized.rewindAdvanceStep,
+    DEFAULT_SETTINGS.rewindAdvanceStep,
     0.1,
     600
   );
   if (
-    !normalized.rewindAdvanceSteps.some((step) =>
-      isApproximately(step, normalized.rewindAdvanceCurrentStep, 0.0001)
+    !normalized.rewindAdvanceStepPresets.some((step) =>
+      isApproximately(step, normalized.rewindAdvanceStep, 0.0001)
     )
   ) {
-    normalized.rewindAdvanceCurrentStep = normalized.rewindAdvanceSteps[0];
+    normalized.rewindAdvanceStep = normalized.rewindAdvanceStepPresets[0];
   }
   normalized.preferSpeed = sanitizeNumber(normalized.preferSpeed, DEFAULT_SETTINGS.preferSpeed, 0.1, 16);
+  normalized.fastForwardSpeed = sanitizeNumber(
+    normalized.fastForwardSpeed,
+    DEFAULT_SETTINGS.fastForwardSpeed,
+    1,
+    16
+  );
+  normalized.slowMotionSpeed = sanitizeNumber(
+    normalized.slowMotionSpeed,
+    DEFAULT_SETTINGS.slowMotionSpeed,
+    0.1,
+    1
+  );
   normalized.overlayFontSize = sanitizeNumber(normalized.overlayFontSize, DEFAULT_SETTINGS.overlayFontSize, 8, 72);
   normalized.overlayBackgroundAlpha = sanitizeNumber(
     normalized.overlayBackgroundAlpha,
@@ -116,7 +135,7 @@ function sanitizeStepList(value, fallback) {
   if (Array.isArray(fallback) && fallback.length) {
     return [...fallback];
   }
-  return DEFAULT_SETTINGS.rewindAdvanceSteps.slice();
+  return DEFAULT_SETTINGS.rewindAdvanceStepPresets.slice();
 }
 
 function isApproximately(value, target, threshold = 0.01) {

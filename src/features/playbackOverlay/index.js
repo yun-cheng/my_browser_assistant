@@ -1,8 +1,13 @@
 import { ensurePlaybackOverlayStyles } from './styles.js';
 import { PlaybackController } from './controller.js';
-import { saveSettings } from '../../lib/settings.js';
+import { saveSettings, DEFAULT_SETTINGS } from '../../lib/settings.js';
 
-const DEFAULT_REWIND_ADVANCE_STEPS = [2, 5, 10];
+const DEFAULT_REWIND_ADVANCE_STEP_PRESETS = [2, 5, 10];
+const FAST_FORWARD_HOLD_DELAY = 250;
+const MIN_FAST_FORWARD_SPEED = 1;
+const MAX_FAST_FORWARD_SPEED = 16;
+const MIN_SLOW_MOTION_SPEED = 0.1;
+const MAX_SLOW_MOTION_SPEED = 1;
 
 export class PlaybackOverlayFeature {
   constructor(settings) {
@@ -11,7 +16,9 @@ export class PlaybackOverlayFeature {
     this.overlayVisible = settings.showCurrentSpeed;
     this.preferredSpeed = settings.preferSpeed || 1;
     this.lastCustomSpeed = this.preferredSpeed;
-    this.speedStep = Number.isFinite(settings.speedStep) ? settings.speedStep : 0.1;
+    this.speedAdjustmentStep = Number.isFinite(settings.speedAdjustmentStep)
+      ? settings.speedAdjustmentStep
+      : 0.1;
     this.overlayFontSize = Number.isFinite(settings.overlayFontSize) ? settings.overlayFontSize : 18;
     this.overlayBackgroundAlpha = Number.isFinite(settings.overlayBackgroundAlpha)
       ? settings.overlayBackgroundAlpha
@@ -19,13 +26,34 @@ export class PlaybackOverlayFeature {
     this.overlayPosition = {
       ...(settings.overlayPosition || { x: 0, y: 0, ratioX: 0.01, ratioY: 0.05 })
     };
-    this.rewindAdvanceSteps = this.normalizeRewindAdvanceSteps(settings.rewindAdvanceSteps);
-    this.rewindAdvanceCurrentStep = this.resolveRewindAdvanceCurrentStep(
-      settings.rewindAdvanceCurrentStep
+    this.rewindAdvanceStepPresets = this.normalizeRewindAdvanceStepPresets(
+      settings.rewindAdvanceStepPresets
     );
+    this.rewindAdvanceStep = this.resolveRewindAdvanceStep(settings.rewindAdvanceStep);
+    this.fastForwardSpeed = clampFastForwardSpeed(settings.fastForwardSpeed);
+    this.slowMotionSpeed = clampSlowMotionSpeed(settings.slowMotionSpeed);
+    this.fastForwardState = {
+      timerId: null,
+      controller: null,
+      previousRate: null,
+      active: false,
+      targetRate: null,
+      pendingAdvance: null,
+      pendingAdvanceStep: null
+    };
+    this.slowMotionState = {
+      timerId: null,
+      controller: null,
+      previousRate: null,
+      active: false,
+      targetRate: null,
+      pendingRewind: null,
+      pendingRewindStep: null
+    };
     this.activeVideo = null;
     this.mutationObserver = null;
     this.handleKeydown = this.handleKeydown.bind(this);
+    this.handleKeyup = this.handleKeyup.bind(this);
   }
 
   init() {
@@ -33,10 +61,14 @@ export class PlaybackOverlayFeature {
     this.scanForExistingVideos();
     this.observeDom();
     document.addEventListener('keydown', this.handleKeydown, true);
+    document.addEventListener('keyup', this.handleKeyup, true);
   }
 
   dispose() {
     document.removeEventListener('keydown', this.handleKeydown, true);
+    document.removeEventListener('keyup', this.handleKeyup, true);
+    this.stopFastForward(false);
+    this.stopSlowMotion(false);
     if (this.mutationObserver) {
       this.mutationObserver.disconnect();
     }
@@ -50,7 +82,9 @@ export class PlaybackOverlayFeature {
   updateSettings(nextSettings) {
     this.settings = nextSettings;
     this.overlayVisible = nextSettings.showCurrentSpeed;
-    this.speedStep = Number.isFinite(nextSettings.speedStep) ? nextSettings.speedStep : this.speedStep;
+    this.speedAdjustmentStep = Number.isFinite(nextSettings.speedAdjustmentStep)
+      ? nextSettings.speedAdjustmentStep
+      : this.speedAdjustmentStep;
     this.overlayFontSize = Number.isFinite(nextSettings.overlayFontSize)
       ? nextSettings.overlayFontSize
       : this.overlayFontSize;
@@ -60,10 +94,12 @@ export class PlaybackOverlayFeature {
     this.overlayPosition = {
       ...(nextSettings.overlayPosition || this.overlayPosition)
     };
-    this.rewindAdvanceSteps = this.normalizeRewindAdvanceSteps(nextSettings.rewindAdvanceSteps);
-    this.rewindAdvanceCurrentStep = this.resolveRewindAdvanceCurrentStep(
-      nextSettings.rewindAdvanceCurrentStep
+    this.rewindAdvanceStepPresets = this.normalizeRewindAdvanceStepPresets(
+      nextSettings.rewindAdvanceStepPresets
     );
+    this.rewindAdvanceStep = this.resolveRewindAdvanceStep(nextSettings.rewindAdvanceStep);
+    this.fastForwardSpeed = clampFastForwardSpeed(nextSettings.fastForwardSpeed);
+    this.slowMotionSpeed = clampSlowMotionSpeed(nextSettings.slowMotionSpeed);
 
     if (!isApproximately(this.preferredSpeed, nextSettings.preferSpeed)) {
       this.preferredSpeed = nextSettings.preferSpeed;
@@ -169,6 +205,12 @@ export class PlaybackOverlayFeature {
     entry.listeners.forEach(({ type, handler, options }) => video.removeEventListener(type, handler, options));
     entry.controller.destroy();
     this.controllers.delete(video);
+    if (this.fastForwardState.controller === entry.controller) {
+      this.stopFastForward(false);
+    }
+    if (this.slowMotionState.controller === entry.controller) {
+      this.stopSlowMotion(false);
+    }
 
     if (this.activeVideo === video) {
       this.activeVideo = this.getFallbackVideo();
@@ -268,7 +310,7 @@ export class PlaybackOverlayFeature {
 
     if (key === settings.decreaseKey) {
       prevents();
-      const rate = controller.changeSpeed(-this.speedStep);
+      const rate = controller.changeSpeed(-this.speedAdjustmentStep);
       controller.flashOverlay();
       this.recordCustomSpeed(rate);
       return;
@@ -276,28 +318,28 @@ export class PlaybackOverlayFeature {
 
     if (key === settings.increaseKey) {
       prevents();
-      const rate = controller.changeSpeed(this.speedStep);
+      const rate = controller.changeSpeed(this.speedAdjustmentStep);
       controller.flashOverlay();
       this.recordCustomSpeed(rate);
       return;
     }
 
-    if (key === settings.cycleRewindAdvanceKey) {
+    if (key === settings.switchRewindAdvanceKey) {
       prevents();
-      this.cycleRewindAdvanceStep();
+      this.switchRewindAdvanceStep();
       controller.flashOverlay();
       return;
     }
 
     if (key === settings.rewindKey) {
       prevents();
-      controller.rewind(this.getRewindAdvanceStep());
+      this.scheduleSlowMotion(controller);
       return;
     }
 
     if (key === settings.advanceKey) {
       prevents();
-      controller.advance(this.getRewindAdvanceStep());
+      this.scheduleFastForward(controller);
       return;
     }
 
@@ -306,6 +348,33 @@ export class PlaybackOverlayFeature {
       this.overlayVisible = !this.overlayVisible;
       this.controllers.forEach(({ controller: ctrl }) => ctrl.setOverlayVisibility(this.overlayVisible));
       saveSettings({ showCurrentSpeed: this.overlayVisible });
+    }
+  }
+
+  handleKeyup(event) {
+    if (event.defaultPrevented) {
+      return;
+    }
+    if (event.altKey || event.metaKey || event.ctrlKey) {
+      return;
+    }
+    const key = normalizeKey(event.key);
+    if (key === this.settings.advanceKey) {
+      const pendingController = this.fastForwardState.pendingAdvance;
+      const pendingStep = this.fastForwardState.pendingAdvanceStep;
+      const wasActive = this.fastForwardState.active;
+      this.stopFastForward(true);
+      if (!wasActive && pendingController && Number.isFinite(pendingStep)) {
+        pendingController.advance(pendingStep);
+      }
+    } else if (key === this.settings.rewindKey) {
+      const pendingController = this.slowMotionState.pendingRewind;
+      const pendingStep = this.slowMotionState.pendingRewindStep;
+      const wasActive = this.slowMotionState.active;
+      this.stopSlowMotion(true);
+      if (!wasActive && pendingController && Number.isFinite(pendingStep)) {
+        pendingController.rewind(pendingStep);
+      }
     }
   }
 
@@ -332,6 +401,20 @@ export class PlaybackOverlayFeature {
   }
 
   handleControllerRateChange(rate) {
+    if (
+      this.fastForwardState.active &&
+      Number.isFinite(this.fastForwardState.targetRate) &&
+      isApproximately(rate, this.fastForwardState.targetRate, 0.0001)
+    ) {
+      return;
+    }
+    if (
+      this.slowMotionState.active &&
+      Number.isFinite(this.slowMotionState.targetRate) &&
+      isApproximately(rate, this.slowMotionState.targetRate, 0.0001)
+    ) {
+      return;
+    }
     if (isApproximately(rate, 1)) {
       return;
     }
@@ -355,7 +438,7 @@ export class PlaybackOverlayFeature {
     return 1;
   }
 
-  normalizeRewindAdvanceSteps(steps) {
+  normalizeRewindAdvanceStepPresets(steps) {
     if (Array.isArray(steps) && steps.length) {
       const sanitized = steps
         .map((step) => Number(step))
@@ -364,11 +447,13 @@ export class PlaybackOverlayFeature {
         return sanitized;
       }
     }
-    return DEFAULT_REWIND_ADVANCE_STEPS.slice();
+    return DEFAULT_REWIND_ADVANCE_STEP_PRESETS.slice();
   }
 
-  resolveRewindAdvanceCurrentStep(value) {
-    const steps = this.rewindAdvanceSteps?.length ? this.rewindAdvanceSteps : DEFAULT_REWIND_ADVANCE_STEPS;
+  resolveRewindAdvanceStep(value) {
+    const steps = this.rewindAdvanceStepPresets?.length
+      ? this.rewindAdvanceStepPresets
+      : DEFAULT_REWIND_ADVANCE_STEP_PRESETS;
     if (Number.isFinite(value)) {
       const match = steps.find((step) => isApproximately(step, value, 0.0001));
       if (match) {
@@ -379,21 +464,24 @@ export class PlaybackOverlayFeature {
   }
 
   getRewindAdvanceStep() {
-    if (!this.rewindAdvanceSteps || !this.rewindAdvanceSteps.length) {
-      this.rewindAdvanceSteps = DEFAULT_REWIND_ADVANCE_STEPS.slice();
+    if (!this.rewindAdvanceStepPresets || !this.rewindAdvanceStepPresets.length) {
+      this.rewindAdvanceStepPresets = DEFAULT_REWIND_ADVANCE_STEP_PRESETS.slice();
     }
-    if (!Number.isFinite(this.rewindAdvanceCurrentStep)) {
-      this.rewindAdvanceCurrentStep = this.rewindAdvanceSteps[0];
+    if (!Number.isFinite(this.rewindAdvanceStep)) {
+      this.rewindAdvanceStep = this.rewindAdvanceStepPresets[0];
     }
-    return this.rewindAdvanceCurrentStep;
+    return this.rewindAdvanceStep;
   }
 
-  cycleRewindAdvanceStep() {
-    const steps = this.rewindAdvanceSteps && this.rewindAdvanceSteps.length ? this.rewindAdvanceSteps : DEFAULT_REWIND_ADVANCE_STEPS;
-    const currentIndex = steps.findIndex((step) => isApproximately(step, this.rewindAdvanceCurrentStep, 0.0001));
+  switchRewindAdvanceStep() {
+    const steps =
+      this.rewindAdvanceStepPresets && this.rewindAdvanceStepPresets.length
+        ? this.rewindAdvanceStepPresets
+        : DEFAULT_REWIND_ADVANCE_STEP_PRESETS;
+    const currentIndex = steps.findIndex((step) => isApproximately(step, this.rewindAdvanceStep, 0.0001));
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % steps.length;
-    this.rewindAdvanceCurrentStep = steps[nextIndex];
-    saveSettings({ rewindAdvanceCurrentStep: this.rewindAdvanceCurrentStep });
+    this.rewindAdvanceStep = steps[nextIndex];
+    saveSettings({ rewindAdvanceStep: this.rewindAdvanceStep });
     this.applyRewindAdvanceStepToControllers();
   }
 
@@ -401,6 +489,140 @@ export class PlaybackOverlayFeature {
     const step = this.getRewindAdvanceStep();
     this.controllers.forEach(({ controller }) => controller.setRewindAdvanceStep(step));
   }
+
+  scheduleFastForward(controller) {
+    if (!controller) {
+      return;
+    }
+    this.clearFastForwardTimer();
+    this.fastForwardState.controller = controller;
+    this.fastForwardState.previousRate = controller.video?.playbackRate ?? 1;
+    this.fastForwardState.active = false;
+    this.fastForwardState.targetRate = null;
+    this.fastForwardState.pendingAdvance = controller;
+    this.fastForwardState.pendingAdvanceStep = this.getRewindAdvanceStep();
+    this.fastForwardState.timerId = window.setTimeout(
+      () => this.activateFastForward(),
+      FAST_FORWARD_HOLD_DELAY
+    );
+  }
+
+  activateFastForward() {
+    this.fastForwardState.timerId = null;
+    const controller = this.fastForwardState.controller;
+    if (!controller) {
+      return;
+    }
+    this.fastForwardState.pendingAdvance = null;
+    this.fastForwardState.pendingAdvanceStep = null;
+    const targetRate = clampFastForwardSpeed(this.fastForwardSpeed);
+    this.fastForwardState.active = true;
+    this.fastForwardState.targetRate = targetRate;
+    controller.setSpeed(targetRate);
+    controller.flashOverlay();
+  }
+
+  stopFastForward(restoreRate) {
+    this.clearFastForwardTimer();
+    const wasActive = this.fastForwardState.active;
+    const controller = this.fastForwardState.controller;
+    const previousRate = this.fastForwardState.previousRate;
+    const shouldRestore = Boolean(
+      restoreRate && wasActive && controller && Number.isFinite(previousRate)
+    );
+    this.fastForwardState.active = false;
+    this.fastForwardState.controller = null;
+    this.fastForwardState.previousRate = null;
+    this.fastForwardState.targetRate = null;
+    this.fastForwardState.pendingAdvance = null;
+    this.fastForwardState.pendingAdvanceStep = null;
+    if (shouldRestore) {
+      controller.setSpeed(previousRate);
+      controller.flashOverlay();
+      this.recordCustomSpeed(previousRate);
+    }
+  }
+
+  clearFastForwardTimer() {
+    if (this.fastForwardState.timerId) {
+      clearTimeout(this.fastForwardState.timerId);
+      this.fastForwardState.timerId = null;
+    }
+  }
+
+  scheduleSlowMotion(controller) {
+    if (!controller) {
+      return;
+    }
+    this.clearSlowMotionTimer();
+    this.slowMotionState.controller = controller;
+    this.slowMotionState.previousRate = controller.video?.playbackRate ?? 1;
+    this.slowMotionState.active = false;
+    this.slowMotionState.targetRate = null;
+    this.slowMotionState.pendingRewind = controller;
+    this.slowMotionState.pendingRewindStep = this.getRewindAdvanceStep();
+    this.slowMotionState.timerId = window.setTimeout(
+      () => this.activateSlowMotion(),
+      FAST_FORWARD_HOLD_DELAY
+    );
+  }
+
+  activateSlowMotion() {
+    this.slowMotionState.timerId = null;
+    const controller = this.slowMotionState.controller;
+    if (!controller) {
+      return;
+    }
+    this.slowMotionState.pendingRewind = null;
+    this.slowMotionState.pendingRewindStep = null;
+    const targetRate = clampSlowMotionSpeed(this.slowMotionSpeed);
+    this.slowMotionState.active = true;
+    this.slowMotionState.targetRate = targetRate;
+    controller.setSpeed(targetRate);
+    controller.flashOverlay();
+  }
+
+  stopSlowMotion(restoreRate) {
+    this.clearSlowMotionTimer();
+    const wasActive = this.slowMotionState.active;
+    const controller = this.slowMotionState.controller;
+    const previousRate = this.slowMotionState.previousRate;
+    const shouldRestore = Boolean(
+      restoreRate && wasActive && controller && Number.isFinite(previousRate)
+    );
+    this.slowMotionState.active = false;
+    this.slowMotionState.controller = null;
+    this.slowMotionState.previousRate = null;
+    this.slowMotionState.targetRate = null;
+    this.slowMotionState.pendingRewind = null;
+    this.slowMotionState.pendingRewindStep = null;
+    if (shouldRestore) {
+      controller.setSpeed(previousRate);
+      controller.flashOverlay();
+      this.recordCustomSpeed(previousRate);
+    }
+  }
+
+  clearSlowMotionTimer() {
+    if (this.slowMotionState.timerId) {
+      clearTimeout(this.slowMotionState.timerId);
+      this.slowMotionState.timerId = null;
+    }
+  }
+}
+
+function clampFastForwardSpeed(value) {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_SETTINGS.fastForwardSpeed;
+  }
+  return Math.min(Math.max(value, MIN_FAST_FORWARD_SPEED), MAX_FAST_FORWARD_SPEED);
+}
+
+function clampSlowMotionSpeed(value) {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_SETTINGS.slowMotionSpeed;
+  }
+  return Math.min(Math.max(value, MIN_SLOW_MOTION_SPEED), MAX_SLOW_MOTION_SPEED);
 }
 
 function normalizeKey(key) {

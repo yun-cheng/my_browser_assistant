@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>My Browser Assistant Controls</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <main>
+      <form id="settingsForm">
+        <section>
+          <h2>Playback Controls</h2>
+          <div class="field single">
+            <label class="field-label" for="resetKey">Reset speed</label>
+            <div class="field-content">
+              <div class="inline-control">
+                <label class="inline-label" for="resetKey">Key</label>
+                <input id="resetKey" class="key-input" type="text" data-setting="resetKey" placeholder="Press a key" readonly />
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="decreaseKey">Decrease speed</label>
+            <div class="field-content">
+              <div class="inline-control">
+                <label class="inline-label" for="decreaseKey">Key</label>
+                <input id="decreaseKey" class="key-input" type="text" data-setting="decreaseKey" placeholder="Press a key" readonly />
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="increaseKey">Increase speed</label>
+            <div class="field-content">
+              <div class="inline-control">
+                <label class="inline-label" for="increaseKey">Key</label>
+                <input id="increaseKey" class="key-input" type="text" data-setting="increaseKey" placeholder="Press a key" readonly />
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="speedStep">Speed step</label>
+            <div class="field-content">
+              <input
+                id="speedStep"
+                class="value-input"
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="16"
+                data-value-setting="speedStep"
+              />
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="rewindKey">Rewind</label>
+            <div class="field-content">
+              <div class="inline-control">
+                <label class="inline-label" for="rewindKey">Key</label>
+                <input id="rewindKey" class="key-input" type="text" data-setting="rewindKey" placeholder="Press a key" readonly />
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="advanceKey">Advance</label>
+            <div class="field-content">
+              <div class="inline-control">
+                <label class="inline-label" for="advanceKey">Key</label>
+                <input id="advanceKey" class="key-input" type="text" data-setting="advanceKey" placeholder="Press a key" readonly />
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="cycleRewindAdvanceKey">Cycle rewind/advance step</label>
+            <div class="field-content">
+              <div class="inline-control">
+                <label class="inline-label" for="cycleRewindAdvanceKey">Key</label>
+                <input
+                  id="cycleRewindAdvanceKey"
+                  class="key-input"
+                  type="text"
+                  data-setting="cycleRewindAdvanceKey"
+                  placeholder="Press a key"
+                  readonly
+                />
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="rewindAdvanceSteps">Step options (seconds)</label>
+            <div class="field-content">
+              <input
+                id="rewindAdvanceSteps"
+                type="text"
+                class="value-input"
+                inputmode="decimal"
+                placeholder="e.g. 2, 5, 10"
+              />
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="rewindAdvanceCurrentStep">Current step (seconds)</label>
+            <div class="field-content">
+              <input
+                id="rewindAdvanceCurrentStep"
+                class="value-input"
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="600"
+                data-value-setting="rewindAdvanceCurrentStep"
+              />
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="preferSpeed">Preferred speed</label>
+            <div class="field-content">
+              <input
+                id="preferSpeed"
+                class="value-input"
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="16"
+                data-value-setting="preferSpeed"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Speed & Step Overlay</h2>
+          <div class="field">
+            <label class="field-label" for="showCurrentSpeed">Show overlay</label>
+            <label class="checkbox align-right">
+              <input id="showCurrentSpeed" name="showCurrentSpeed" type="checkbox" aria-label="Show current speed overlay" />
+            </label>
+          </div>
+          <div class="field">
+            <label class="field-label" for="toggleOverlayKey">Toggle overlay</label>
+            <div class="field-content">
+              <div class="inline-control">
+                <label class="inline-label" for="toggleOverlayKey">Key</label>
+                <input id="toggleOverlayKey" class="key-input" type="text" data-setting="toggleOverlayKey" placeholder="Press a key" readonly />
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="overlayFontSize">Font size (px)</label>
+            <div class="field-content">
+              <input
+                id="overlayFontSize"
+                class="value-input"
+                type="number"
+                step="1"
+                min="8"
+                max="72"
+                data-value-setting="overlayFontSize"
+              />
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="overlayBackgroundAlpha">Background alpha</label>
+            <div class="field-content">
+              <input
+                id="overlayBackgroundAlpha"
+                class="value-input"
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="1"
+                data-value-setting="overlayBackgroundAlpha"
+              />
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="overlayPosX">Position (%)</label>
+            <div class="field-content">
+              <div class="inline-control">
+                <label class="inline-label" for="overlayPosX">X (%)</label>
+                <input id="overlayPosX" class="value-input" type="number" min="0" max="100" step="1" />
+              </div>
+              <div class="inline-control">
+                <label class="inline-label" for="overlayPosY">Y (%)</label>
+                <input id="overlayPosY" class="value-input" type="number" min="0" max="100" step="1" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="actions">
+          <button type="button" id="restoreDefaults">Restore defaults</button>
+        </div>
+      </form>
+    </main>
+
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

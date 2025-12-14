@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "My Browser Assistant",
+  "version": "0.1.0",
+  "description": "My Browser Assistant",
+  "permissions": ["storage", "sidePanel"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+  "default_title": "My Browser Assistant"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "background": {
+    "service_worker": "src/background/serviceWorker.js",
+    "type": "module"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/content/main.js",
+        "src/features/videoSpeed/*",
+        "src/lib/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/loader.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

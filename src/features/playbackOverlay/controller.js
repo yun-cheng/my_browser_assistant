@@ -1,9 +1,9 @@
-import { SpeedOverlay } from './overlay.js';
+import { PlaybackOverlay } from './overlay.js';
 
 const MIN_SPEED = 0.07;
 const MAX_SPEED = 16;
 
-export class VideoSpeedController {
+export class PlaybackController {
   constructor(
     video,
     {
@@ -17,7 +17,7 @@ export class VideoSpeedController {
     } = {}
   ) {
     this.video = video;
-    this.overlay = new SpeedOverlay(video, {
+    this.overlay = new PlaybackOverlay(video, {
       visible: showOverlay,
       fontSize,
       backgroundAlpha,

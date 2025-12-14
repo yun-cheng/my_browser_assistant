@@ -19,7 +19,7 @@
     {
       "resources": [
         "src/content/main.js",
-        "src/features/videoSpeed/*",
+        "src/features/playbackOverlay/*",
         "src/lib/*"
       ],
       "matches": ["<all_urls>"]

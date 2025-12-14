@@ -1,6 +1,6 @@
-const STYLE_ID = 'my-ai-assistant-video-speed-styles';
+const STYLE_ID = 'my-browser-assistant-playback-overlay-styles';
 
-export function ensureVideoSpeedStyles() {
+export function ensurePlaybackOverlayStyles() {
   if (document.getElementById(STYLE_ID)) {
     return;
   }
@@ -8,14 +8,17 @@ export function ensureVideoSpeedStyles() {
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
-    .my-ai-assistant-overlay {
+    .my-browser-assistant-overlay {
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: 0px;
+      left: 0px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       padding: 4px 8px;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.5);
       color: #fff;
-      font-size: 14px;
+      font-size: 18px;
       border-radius: 4px;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       z-index: 2147483647;
@@ -25,17 +28,19 @@ export function ensureVideoSpeedStyles() {
       touch-action: none;
       transition: opacity 0.2s ease-in-out;
       opacity: 0;
+      line-height: 1;
+      white-space: nowrap;
     }
 
-    .my-ai-assistant-overlay.is-visible {
+    .my-browser-assistant-overlay.is-visible {
       opacity: 1;
     }
 
-    .my-ai-assistant-overlay.is-hidden {
+    .my-browser-assistant-overlay.is-hidden {
       opacity: 0;
     }
 
-    .my-ai-assistant-overlay.is-dragging {
+    .my-browser-assistant-overlay.is-dragging {
       cursor: grabbing;
     }
   `;

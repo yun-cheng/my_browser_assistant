@@ -22,8 +22,8 @@ my_browser_assistant/
 └─ src/
    ├─ background/serviceWorker.js # Manages side panel behavior/toggling
    ├─ content/loader.js           # Injects the main content module
-   ├─ content/main.js             # Boots the VideoSpeedFeature
-   ├─ features/videoSpeed/        # Controller, overlay, styles
+   ├─ content/main.js             # Boots the PlaybackOverlayFeature
+   ├─ features/playbackOverlay/   # Controller, overlay, styles
    └─ lib/settings.js             # Storage + defaults for all settings
 ```
 
@@ -72,6 +72,6 @@ Settings are saved via `chrome.storage.sync`, so they follow you across devices.
 ## Architecture
 
 - **Background service worker** – Registers the side panel and listens for the extension icon click so the panel toggles open/closed per-window.
-- **Content module** – Injected on every page and boots the single `VideoSpeedFeature`. It watches the DOM (including shadow roots) for `<video>` elements, instantiates controllers, and dispatches keyboard shortcuts.
-- **VideoSpeedController/Overlay** – Each controller wraps a `<video>` element, handles rate/seeking changes, and syncs the draggable overlay (showing `speed/current-step`). The overlay persists ratios so it stays relative in fullscreen.
+- **Content module** – Injected on every page and boots the single `PlaybackOverlayFeature`. It watches the DOM (including shadow roots) for `<video>` elements, instantiates controllers, and dispatches keyboard shortcuts.
+- **PlaybackController/Overlay** – Each controller wraps a `<video>` element, handles rate/seeking changes, and syncs the draggable overlay (showing `speed/current-step`). The overlay persists ratios so it stays relative in fullscreen.
 - **Side panel** – A standalone UI hooked into `chrome.storage.sync`. Settings flow: user input → `sidepanel.js` → `saveSettings` → storage → content script via `subscribeToSettings`.

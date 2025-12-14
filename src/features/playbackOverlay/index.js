@@ -1,10 +1,10 @@
-import { ensureVideoSpeedStyles } from './styles.js';
-import { VideoSpeedController } from './controller.js';
+import { ensurePlaybackOverlayStyles } from './styles.js';
+import { PlaybackController } from './controller.js';
 import { saveSettings } from '../../lib/settings.js';
 
 const DEFAULT_REWIND_ADVANCE_STEPS = [2, 5, 10];
 
-export class VideoSpeedFeature {
+export class PlaybackOverlayFeature {
   constructor(settings) {
     this.settings = settings;
     this.controllers = new Map();
@@ -12,9 +12,13 @@ export class VideoSpeedFeature {
     this.preferredSpeed = settings.preferSpeed || 1;
     this.lastCustomSpeed = this.preferredSpeed;
     this.speedStep = Number.isFinite(settings.speedStep) ? settings.speedStep : 0.1;
-    this.overlayFontSize = settings.overlayFontSize || 14;
-    this.overlayBackgroundAlpha = settings.overlayBackgroundAlpha || 0.7;
-    this.overlayPosition = { ...(settings.overlayPosition || { x: 12, y: 12 }) };
+    this.overlayFontSize = Number.isFinite(settings.overlayFontSize) ? settings.overlayFontSize : 18;
+    this.overlayBackgroundAlpha = Number.isFinite(settings.overlayBackgroundAlpha)
+      ? settings.overlayBackgroundAlpha
+      : 0.5;
+    this.overlayPosition = {
+      ...(settings.overlayPosition || { x: 0, y: 0, ratioX: 0.01, ratioY: 0.05 })
+    };
     this.rewindAdvanceSteps = this.normalizeRewindAdvanceSteps(settings.rewindAdvanceSteps);
     this.rewindAdvanceCurrentStep = this.resolveRewindAdvanceCurrentStep(
       settings.rewindAdvanceCurrentStep
@@ -25,7 +29,7 @@ export class VideoSpeedFeature {
   }
 
   init() {
-    ensureVideoSpeedStyles();
+    ensurePlaybackOverlayStyles();
     this.scanForExistingVideos();
     this.observeDom();
     document.addEventListener('keydown', this.handleKeydown, true);
@@ -47,9 +51,15 @@ export class VideoSpeedFeature {
     this.settings = nextSettings;
     this.overlayVisible = nextSettings.showCurrentSpeed;
     this.speedStep = Number.isFinite(nextSettings.speedStep) ? nextSettings.speedStep : this.speedStep;
-    this.overlayFontSize = nextSettings.overlayFontSize || this.overlayFontSize;
-    this.overlayBackgroundAlpha = nextSettings.overlayBackgroundAlpha || this.overlayBackgroundAlpha;
-    this.overlayPosition = { ...(nextSettings.overlayPosition || this.overlayPosition) };
+    this.overlayFontSize = Number.isFinite(nextSettings.overlayFontSize)
+      ? nextSettings.overlayFontSize
+      : this.overlayFontSize;
+    this.overlayBackgroundAlpha = Number.isFinite(nextSettings.overlayBackgroundAlpha)
+      ? nextSettings.overlayBackgroundAlpha
+      : this.overlayBackgroundAlpha;
+    this.overlayPosition = {
+      ...(nextSettings.overlayPosition || this.overlayPosition)
+    };
     this.rewindAdvanceSteps = this.normalizeRewindAdvanceSteps(nextSettings.rewindAdvanceSteps);
     this.rewindAdvanceCurrentStep = this.resolveRewindAdvanceCurrentStep(
       nextSettings.rewindAdvanceCurrentStep
@@ -133,7 +143,7 @@ export class VideoSpeedFeature {
       return;
     }
 
-    const controller = new VideoSpeedController(video, {
+    const controller = new PlaybackController(video, {
       showOverlay: this.overlayVisible,
       fontSize: this.overlayFontSize,
       backgroundAlpha: this.overlayBackgroundAlpha,

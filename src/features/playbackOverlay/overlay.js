@@ -1,13 +1,13 @@
-const POSITION_FLAG = 'data-my-ai-assistant-positioned';
+const POSITION_FLAG = 'data-my-browser-assistant-positioned';
 
-export class SpeedOverlay {
+export class PlaybackOverlay {
   constructor(
     video,
     {
       visible = true,
-      fontSize = 14,
-      backgroundAlpha = 0.7,
-      position = { x: 12, y: 12 },
+      fontSize = 18,
+      backgroundAlpha = 0.5,
+      position = { x: 0, y: 0, ratioX: 0.01, ratioY: 0.05 },
       onPositionChange
     } = {}
   ) {
@@ -22,13 +22,14 @@ export class SpeedOverlay {
     this.stepSeconds = null;
     this.onPositionChange = onPositionChange;
     this.element = document.createElement('div');
-    this.element.className = 'my-ai-assistant-overlay';
+    this.element.className = 'my-browser-assistant-overlay';
     this.applyBaseStyles();
     this.parentOriginalPosition = null;
     this.parentElement = null;
     this.shadowHost = null;
     this.attached = false;
     this.dragState = null;
+    this.resizeObserver = null;
     this.handlePointerDown = this.handlePointerDown.bind(this);
     this.handlePointerMove = this.handlePointerMove.bind(this);
     this.handlePointerUp = this.handlePointerUp.bind(this);
@@ -66,6 +67,7 @@ export class SpeedOverlay {
     document.addEventListener('fullscreenchange', this.handleViewportChange);
     // Recompute position now that the element is in the document flow and has real dimensions.
     this.applyPosition();
+    this.observeResizeTarget(parent);
     this.attached = true;
   }
 
@@ -79,6 +81,10 @@ export class SpeedOverlay {
     this.element.removeEventListener('pointerdown', this.handlePointerDown);
     window.removeEventListener('resize', this.handleViewportChange);
     document.removeEventListener('fullscreenchange', this.handleViewportChange);
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
     const parent = this.element.parentElement;
     if (parent) {
       parent.removeChild(this.element);
@@ -307,11 +313,26 @@ export class SpeedOverlay {
     this.applyPosition();
   }
 
+  observeResizeTarget(parent) {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+    if (typeof ResizeObserver !== 'function') {
+      return;
+    }
+    const target = this.video instanceof Element ? this.video : parent;
+    if (!target) {
+      return;
+    }
+    this.resizeObserver = new ResizeObserver(() => this.applyPosition());
+    this.resizeObserver.observe(target);
+  }
+
   applyBaseStyles() {
     const style = this.element.style;
     style.position = 'absolute';
-    style.top = '12px';
-    style.left = '12px';
+    style.top = '0px';
+    style.left = '0px';
     style.display = 'inline-flex';
     style.alignItems = 'center';
     style.justifyContent = 'center';
@@ -361,17 +382,17 @@ export class SpeedOverlay {
 
 function normalizePositionOption(position) {
   if (!position || typeof position !== 'object') {
-    return { x: 12, y: 12, ratioX: null, ratioY: null };
+    return { x: 0, y: 0, ratioX: 0.01, ratioY: 0.05 };
   }
   const x = Number(position.x);
   const y = Number(position.y);
   const ratioX = Number(position.ratioX);
   const ratioY = Number(position.ratioY);
   return {
-    x: Number.isFinite(x) ? x : 12,
-    y: Number.isFinite(y) ? y : 12,
-    ratioX: Number.isFinite(ratioX) ? clampNumber(ratioX, 0, 1) : null,
-    ratioY: Number.isFinite(ratioY) ? clampNumber(ratioY, 0, 1) : null
+    x: Number.isFinite(x) ? x : 0,
+    y: Number.isFinite(y) ? y : 0,
+    ratioX: Number.isFinite(ratioX) ? clampNumber(ratioX, 0, 1) : 0.01,
+    ratioY: Number.isFinite(ratioY) ? clampNumber(ratioY, 0, 1) : 0.05
   };
 }
 

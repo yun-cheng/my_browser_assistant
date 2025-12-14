@@ -1,5 +1,5 @@
 import { getSettings, subscribeToSettings } from '../lib/settings.js';
-import { VideoSpeedFeature } from '../features/videoSpeed/index.js';
+import { PlaybackOverlayFeature } from '../features/playbackOverlay/index.js';
 
 let featureInstance = null;
 let unsubscribe = null;
@@ -11,7 +11,7 @@ async function boot() {
   }
   initialized = true;
   const settings = await getSettings();
-  featureInstance = new VideoSpeedFeature(settings);
+  featureInstance = new PlaybackOverlayFeature(settings);
   featureInstance.init();
   unsubscribe = subscribeToSettings((next) => featureInstance.updateSettings(next));
 }

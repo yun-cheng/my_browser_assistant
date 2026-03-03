@@ -1,5 +1,7 @@
 export const SETTINGS_STORAGE_KEY = 'my_browser_assistant_settings';
 
+const MAX_VOLUME_MULTIPLIER = 4;
+
 export const DEFAULT_SETTINGS = {
   resetKey: 'a',
   decreaseKey: 's',
@@ -7,6 +9,7 @@ export const DEFAULT_SETTINGS = {
   rewindKey: 'z',
   advanceKey: 'x',
   switchRewindAdvanceKey: 'e',
+  cycleVolumePresetKey: 'q',
   toggleOverlayKey: 'v',
   speedAdjustmentStep: 0.1,
   rewindAdvanceStepPresets: [2, 5, 10],
@@ -14,6 +17,7 @@ export const DEFAULT_SETTINGS = {
   preferSpeed: 1.3,
   fastForwardSpeed: 2,
   slowMotionSpeed: 0.4,
+  volumePresetPercents: [1, 0.5, 0.25],
   overlayFontSize: 18,
   overlayBackgroundAlpha: 0.5,
   overlayPosition: { x: 0, y: 0, ratioX: 0.01, ratioY: 0.05 },
@@ -29,6 +33,7 @@ function normalizeSettings(settings) {
     'rewindKey',
     'advanceKey',
     'switchRewindAdvanceKey',
+    'cycleVolumePresetKey',
     'toggleOverlayKey'
   ];
 
@@ -77,6 +82,10 @@ function normalizeSettings(settings) {
     0.1,
     1
   );
+  normalized.volumePresetPercents = normalizeVolumePresetPercents(
+    normalized.volumePresetPercents,
+    DEFAULT_SETTINGS.volumePresetPercents
+  );
   normalized.overlayFontSize = sanitizeNumber(normalized.overlayFontSize, DEFAULT_SETTINGS.overlayFontSize, 8, 72);
   normalized.overlayBackgroundAlpha = sanitizeNumber(
     normalized.overlayBackgroundAlpha,
@@ -89,7 +98,6 @@ function normalizeSettings(settings) {
     DEFAULT_SETTINGS.overlayPosition
   );
   normalized.showCurrentSpeed = Boolean(normalized.showCurrentSpeed);
-
   return normalized;
 }
 
@@ -146,18 +154,27 @@ function isApproximately(value, target, threshold = 0.01) {
 }
 
 export async function getSettings() {
-  const stored = await chrome.storage.sync.get(SETTINGS_STORAGE_KEY);
+  if (!hasChromeStorage()) {
+    return normalizeSettings({});
+  }
+  const stored = await safeStorageGet(SETTINGS_STORAGE_KEY);
   return normalizeSettings(stored[SETTINGS_STORAGE_KEY] || {});
 }
 
 export async function saveSettings(partial) {
+  if (!hasChromeStorage()) {
+    return normalizeSettings(partial || {});
+  }
   const current = await getSettings();
   const next = normalizeSettings({ ...current, ...partial });
-  await chrome.storage.sync.set({ [SETTINGS_STORAGE_KEY]: next });
+  await safeStorageSet({ [SETTINGS_STORAGE_KEY]: next });
   return next;
 }
 
 export function subscribeToSettings(callback) {
+  if (!hasChromeStorage() || typeof chrome?.storage?.onChanged?.addListener !== 'function') {
+    return () => {};
+  }
   const listener = (changes, areaName) => {
     if (areaName !== 'sync' || !changes[SETTINGS_STORAGE_KEY]) {
       return;
@@ -165,6 +182,91 @@ export function subscribeToSettings(callback) {
     callback(normalizeSettings(changes[SETTINGS_STORAGE_KEY].newValue || {}));
   };
 
-  chrome.storage.onChanged.addListener(listener);
-  return () => chrome.storage.onChanged.removeListener(listener);
+  try {
+    chrome.storage.onChanged.addListener(listener);
+  } catch (error) {
+    if (isExtensionContextInvalid(error)) {
+      return () => {};
+    }
+    throw error;
+  }
+  return () => {
+    try {
+      chrome?.storage?.onChanged?.removeListener?.(listener);
+    } catch (_) {
+      // ignore teardown errors in restricted contexts
+    }
+  };
+}
+
+async function safeStorageGet(key) {
+  if (!hasChromeStorage()) {
+    return {};
+  }
+  try {
+    return await chrome.storage.sync.get(key);
+  } catch (error) {
+    if (isExtensionContextInvalid(error)) {
+      return {};
+    }
+    throw error;
+  }
+}
+
+async function safeStorageSet(payload) {
+  if (!hasChromeStorage()) {
+    return;
+  }
+  try {
+    await chrome.storage.sync.set(payload);
+  } catch (error) {
+    if (isExtensionContextInvalid(error)) {
+      return;
+    }
+    throw error;
+  }
+}
+
+function isExtensionContextInvalid(error) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const message = String(error.message || '');
+  return message.includes('Extension context invalidated');
+}
+
+function normalizeVolumePresetPercents(list, fallback) {
+  let source = [];
+  if (Array.isArray(list)) {
+    source = list;
+  } else if (typeof list === 'string') {
+    source = list.split(/[\s,]+/);
+  }
+  if (!source.length) {
+    source = Array.isArray(fallback) && fallback.length ? fallback : DEFAULT_SETTINGS.volumePresetPercents;
+  }
+  const normalized = source
+    .map((item) => Number(item))
+    .map((value) => {
+      if (!Number.isFinite(value)) {
+        return null;
+      }
+      if (value > MAX_VOLUME_MULTIPLIER + 0.0001) {
+        return value / 100;
+      }
+      return value;
+    })
+    .filter((value) => Number.isFinite(value))
+    .map((value) => Math.min(Math.max(value, 0.05), MAX_VOLUME_MULTIPLIER))
+    .filter((value, index, arr) => index === arr.findIndex((candidate) => Math.abs(candidate - value) < 0.0001));
+
+  return normalized.length ? normalized : [1];
+}
+
+function hasChromeStorage() {
+  return (
+    typeof chrome !== 'undefined' &&
+    chrome?.storage?.sync &&
+    typeof chrome.storage.onChanged?.addListener === 'function'
+  );
 }

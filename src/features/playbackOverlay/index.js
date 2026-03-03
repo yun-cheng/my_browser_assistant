@@ -8,6 +8,8 @@ const MIN_FAST_FORWARD_SPEED = 1;
 const MAX_FAST_FORWARD_SPEED = 16;
 const MIN_SLOW_MOTION_SPEED = 0.1;
 const MAX_SLOW_MOTION_SPEED = 1;
+const MAX_VOLUME_MULTIPLIER = 4;
+const OVERLAY_ID_ATTR = 'data-my-browser-assistant-overlay-id';
 
 export class PlaybackOverlayFeature {
   constructor(settings) {
@@ -30,6 +32,10 @@ export class PlaybackOverlayFeature {
       settings.rewindAdvanceStepPresets
     );
     this.rewindAdvanceStep = this.resolveRewindAdvanceStep(settings.rewindAdvanceStep);
+    this.volumePresetPercents = this.normalizeVolumePresetPercents(
+      settings.volumePresetPercents
+    );
+    this.volumePresetPercent = 1;
     this.fastForwardSpeed = clampFastForwardSpeed(settings.fastForwardSpeed);
     this.slowMotionSpeed = clampSlowMotionSpeed(settings.slowMotionSpeed);
     this.fastForwardState = {
@@ -52,6 +58,7 @@ export class PlaybackOverlayFeature {
     };
     this.activeVideo = null;
     this.mutationObserver = null;
+    this.overlayIdCounter = 1;
     this.handleKeydown = this.handleKeydown.bind(this);
     this.handleKeyup = this.handleKeyup.bind(this);
   }
@@ -75,6 +82,7 @@ export class PlaybackOverlayFeature {
     this.controllers.forEach(({ controller, listeners }) => {
       listeners.forEach(({ type, handler, options }) => controller.video.removeEventListener(type, handler, options));
       controller.destroy();
+      controller.video.removeAttribute(OVERLAY_ID_ATTR);
     });
     this.controllers.clear();
   }
@@ -98,6 +106,10 @@ export class PlaybackOverlayFeature {
       nextSettings.rewindAdvanceStepPresets
     );
     this.rewindAdvanceStep = this.resolveRewindAdvanceStep(nextSettings.rewindAdvanceStep);
+    this.volumePresetPercents = this.normalizeVolumePresetPercents(
+      nextSettings.volumePresetPercents
+    );
+    this.volumePresetPercent = clampVolumePresetValue(this.volumePresetPercent);
     this.fastForwardSpeed = clampFastForwardSpeed(nextSettings.fastForwardSpeed);
     this.slowMotionSpeed = clampSlowMotionSpeed(nextSettings.slowMotionSpeed);
 
@@ -115,6 +127,7 @@ export class PlaybackOverlayFeature {
       });
       controller.setOverlayPosition(this.overlayPosition);
       controller.setRewindAdvanceStep(step);
+      this.applyVolumeMultiplier(controller);
     });
   }
 
@@ -179,6 +192,20 @@ export class PlaybackOverlayFeature {
       return;
     }
 
+    const existingId = video.getAttribute(OVERLAY_ID_ATTR);
+    if (existingId) {
+      const existingOverlay = document.querySelector(
+        `.my-browser-assistant-overlay[${OVERLAY_ID_ATTR}="${existingId}"]`
+      );
+      if (existingOverlay) {
+        return;
+      }
+      video.removeAttribute(OVERLAY_ID_ATTR);
+    }
+
+    const overlayId = `mba-${this.overlayIdCounter++}`;
+    video.setAttribute(OVERLAY_ID_ATTR, overlayId);
+
     const controller = new PlaybackController(video, {
       showOverlay: this.overlayVisible,
       fontSize: this.overlayFontSize,
@@ -186,7 +213,8 @@ export class PlaybackOverlayFeature {
       position: this.overlayPosition,
       stepSeconds: this.getRewindAdvanceStep(),
       onRateChange: (rate) => this.handleControllerRateChange(rate),
-      onPositionChange: (position) => this.handleOverlayPositionChange(position)
+      onPositionChange: (position) => this.handleOverlayPositionChange(position),
+      overlayId
     });
     const listeners = this.createActivationListeners(video);
     this.controllers.set(video, { controller, listeners });
@@ -194,6 +222,7 @@ export class PlaybackOverlayFeature {
     if (!this.activeVideo) {
       this.activeVideo = video;
     }
+    this.applyVolumeMultiplier(controller);
   }
 
   detachController(video) {
@@ -205,6 +234,7 @@ export class PlaybackOverlayFeature {
     entry.listeners.forEach(({ type, handler, options }) => video.removeEventListener(type, handler, options));
     entry.controller.destroy();
     this.controllers.delete(video);
+    video.removeAttribute(OVERLAY_ID_ATTR);
     if (this.fastForwardState.controller === entry.controller) {
       this.stopFastForward(false);
     }
@@ -328,6 +358,12 @@ export class PlaybackOverlayFeature {
       prevents();
       this.switchRewindAdvanceStep();
       controller.flashOverlay();
+      return;
+    }
+
+    if (key === settings.cycleVolumePresetKey) {
+      prevents();
+      this.cycleVolumePreset(controller);
       return;
     }
 
@@ -490,6 +526,76 @@ export class PlaybackOverlayFeature {
     this.controllers.forEach(({ controller }) => controller.setRewindAdvanceStep(step));
   }
 
+  cycleVolumePreset(controller) {
+    const presets = this.getVolumePresetList();
+    if (!presets.length) {
+      return;
+    }
+    const currentMultiplier = clampVolumePresetValue(this.volumePresetPercent ?? 1);
+    let index = presets.findIndex((value) => isApproximately(value, currentMultiplier, 0.0001));
+    if (index === -1) {
+      index = presets.findIndex((value) => isApproximately(value, 1, 0.0001));
+    }
+    if (index === -1) {
+      index = 0;
+    }
+    const nextVolume = presets[(index + 1) % presets.length];
+    this.volumePresetPercent = nextVolume;
+    this.applyVolumeMultiplierToControllers();
+    if (controller) {
+      controller.flashOverlay();
+    }
+  }
+
+  getVolumePresetList() {
+    if (this.volumePresetPercents && this.volumePresetPercents.length) {
+      return this.volumePresetPercents;
+    }
+    return DEFAULT_SETTINGS.volumePresetPercents;
+  }
+
+  applyVolumeMultiplier(controller) {
+    if (!controller) {
+      return;
+    }
+    controller.setVolumeMultiplier(this.getCurrentVolumeMultiplier());
+  }
+
+  applyVolumeMultiplierToControllers() {
+    const multiplier = this.getCurrentVolumeMultiplier();
+    this.controllers.forEach(({ controller }) => controller.setVolumeMultiplier(multiplier));
+  }
+
+  getCurrentVolumeMultiplier() {
+    if (!Number.isFinite(this.volumePresetPercent)) {
+      return 1;
+    }
+    return clampVolumePresetValue(this.volumePresetPercent);
+  }
+
+  normalizeVolumePresetPercents(list) {
+    let source = [];
+    if (Array.isArray(list)) {
+      source = list;
+    } else if (typeof list === 'string') {
+      source = list.split(/[\s,]+/);
+    }
+    if (!source.length) {
+      return DEFAULT_SETTINGS.volumePresetPercents;
+    }
+    const normalized = source
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value))
+      .map((value) => (value > MAX_VOLUME_MULTIPLIER + 0.0001 ? value / 100 : value))
+      .map((value) => Math.min(Math.max(value, 0.05), MAX_VOLUME_MULTIPLIER))
+      .filter(
+        (value, index, arr) =>
+          index === arr.findIndex((candidate) => Math.abs(candidate - value) < 0.0001)
+      );
+    return normalized.length ? normalized : DEFAULT_SETTINGS.volumePresetPercents;
+  }
+
+
   scheduleFastForward(controller) {
     if (!controller) {
       return;
@@ -639,6 +745,17 @@ function isApproximately(value, target, threshold = 0.01) {
   return Math.abs(value - target) <= threshold;
 }
 
+function clampVolumePresetValue(value) {
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+  let normalized = value;
+  if (normalized > 1.0001) {
+    normalized /= 100;
+  }
+  return Math.min(Math.max(normalized, 0.05), MAX_VOLUME_MULTIPLIER);
+}
+
 function clampPositionValue(value) {
   if (!Number.isFinite(value)) {
     return 0;
@@ -663,5 +780,5 @@ function isTypingTarget(target) {
     return true;
   }
 
-  return target.isContentEditable;
+  return Boolean(target.isContentEditable);
 }

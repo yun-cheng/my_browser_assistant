@@ -20,6 +20,7 @@ export class PlaybackOverlay {
     this.position = normalizePositionOption(position);
     this.currentSpeed = 1;
     this.stepSeconds = null;
+    this.volumePercent = null;
     this.onPositionChange = onPositionChange;
     this.element = document.createElement('div');
     this.element.className = 'my-browser-assistant-overlay';
@@ -147,6 +148,20 @@ export class PlaybackOverlay {
       this.stepSeconds = stepSeconds;
     } else {
       this.stepSeconds = null;
+    }
+    this.renderText();
+  }
+
+  setVolumePercent(percent) {
+    if (Number.isFinite(percent)) {
+      const clamped = clampNumber(percent, 1, 400);
+      if (Math.abs(clamped - 100) < 0.5) {
+        this.volumePercent = null;
+      } else {
+        this.volumePercent = clamped;
+      }
+    } else {
+      this.volumePercent = null;
     }
     this.renderText();
   }
@@ -330,48 +345,86 @@ export class PlaybackOverlay {
 
   applyBaseStyles() {
     const style = this.element.style;
-    style.position = 'absolute';
-    style.top = '0px';
-    style.left = '0px';
-    style.display = 'inline-flex';
-    style.alignItems = 'center';
-    style.justifyContent = 'center';
-    style.padding = '4px 8px';
-    style.color = '#fff';
-    style.borderRadius = '4px';
-    style.fontFamily = `system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-    style.zIndex = '2147483647';
-    style.pointerEvents = 'auto';
-    style.cursor = 'grab';
-    style.userSelect = 'none';
-    style.touchAction = 'none';
-    style.transition = 'opacity 0.2s ease-in-out';
-    style.lineHeight = '1';
-    style.whiteSpace = 'nowrap';
+    style.setProperty('position', 'absolute', 'important');
+    style.setProperty('top', '0px', 'important');
+    style.setProperty('left', '0px', 'important');
+    style.setProperty('display', 'inline-flex', 'important');
+    style.setProperty('align-items', 'center', 'important');
+    style.setProperty('justify-content', 'center', 'important');
+    style.setProperty('padding', '4px 8px', 'important');
+    style.setProperty('color', '#fff', 'important');
+    style.setProperty('border-radius', '4px', 'important');
+    style.setProperty('font-family', `system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`, 'important');
+    style.setProperty('z-index', '2147483647', 'important');
+    style.setProperty('pointer-events', 'auto', 'important');
+    style.setProperty('cursor', 'grab', 'important');
+    style.setProperty('user-select', 'none', 'important');
+    style.setProperty('touch-action', 'none', 'important');
+    style.setProperty('transition', 'opacity 0.2s ease-in-out', 'important');
+    style.setProperty('line-height', '1', 'important');
+    style.setProperty('white-space', 'nowrap', 'important');
+    style.setProperty('width', 'max-content', 'important');
+    style.setProperty('height', 'max-content', 'important');
+    style.setProperty('max-width', '100%', 'important');
+    style.setProperty('max-height', '100%', 'important');
+    style.setProperty('box-sizing', 'border-box', 'important');
   }
 
   renderText() {
-    const speedText = `${this.currentSpeed.toFixed(1)}×`;
+    const parts = [`${this.currentSpeed.toFixed(1)}×`];
     if (Number.isFinite(this.stepSeconds)) {
       const stepText =
         Math.abs(this.stepSeconds - Math.round(this.stepSeconds)) < 0.001
           ? Math.round(this.stepSeconds).toString()
           : this.stepSeconds.toFixed(1);
-      this.element.textContent = `${speedText}/${stepText}`;
-    } else {
-      this.element.textContent = speedText;
+      parts.push(stepText);
     }
+    if (Number.isFinite(this.volumePercent)) {
+      parts.push(`${Math.round(this.volumePercent)}%`);
+    }
+    this.element.textContent = parts.join('/');
   }
 
   resolveParentElement() {
     let parent = this.video.parentElement || this.video;
     let computedStyle = parent instanceof HTMLElement ? window.getComputedStyle(parent) : null;
+    const videoRect = this.video?.getBoundingClientRect?.();
+    const videoHasSize = hasRectSize(videoRect);
 
     const root = parent?.getRootNode?.();
     if (root instanceof ShadowRoot) {
       const host = root.host;
       if (host) {
         parent = host;
+        computedStyle = window.getComputedStyle(parent);
+      }
+    }
+
+    const parentRect = parent?.getBoundingClientRect?.();
+    const hasSize = parentRect?.width > 0 && parentRect?.height > 0;
+    if (!videoHasSize || isElementHidden(this.video)) {
+      return { parent, computedStyle };
+    }
+    const offsetParent = this.video instanceof HTMLElement ? this.video.offsetParent : null;
+    if (offsetParent instanceof HTMLElement) {
+      const offsetRect = offsetParent.getBoundingClientRect();
+      const offsetStyle = window.getComputedStyle(offsetParent);
+      if (hasRectSize(offsetRect) && !hasNonIdentityScale(offsetStyle)) {
+        return { parent: offsetParent, computedStyle: offsetStyle };
+      }
+    }
+    if (hasSize && hasNonIdentityScale(computedStyle)) {
+      const visibleParent = findVisibleParent(parent);
+      if (visibleParent && visibleParent !== parent) {
+        parent = visibleParent;
+        computedStyle = window.getComputedStyle(parent);
+      }
+      return { parent, computedStyle };
+    }
+    if (!hasSize) {
+      const visibleParent = findVisibleParent(parent);
+      if (visibleParent && visibleParent !== parent) {
+        parent = visibleParent;
         computedStyle = window.getComputedStyle(parent);
       }
     }
@@ -402,4 +455,77 @@ function clampNumber(value, min, max) {
 
 function defaultRect() {
   return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+}
+
+function hasRectSize(rect) {
+  if (!rect) {
+    return false;
+  }
+  return rect.width > 0 && rect.height > 0;
+}
+
+function findVisibleParent(start) {
+  let current = start;
+  let steps = 0;
+  while (current && current instanceof HTMLElement && steps < 10) {
+    const rect = current.getBoundingClientRect();
+    const style = window.getComputedStyle(current);
+    const hasSize = rect.width > 0 && rect.height > 0;
+    const scaled = hasNonIdentityScale(style);
+    if (hasSize && !scaled) {
+      return current;
+    }
+    current = current.parentElement;
+    steps += 1;
+  }
+  return start;
+}
+
+function isElementHidden(element) {
+  if (!(element instanceof Element)) {
+    return false;
+  }
+  const style = window.getComputedStyle(element);
+  if (!style) {
+    return false;
+  }
+  if (style.display === 'none') {
+    return true;
+  }
+  if (style.visibility === 'hidden' || style.visibility === 'collapse') {
+    return true;
+  }
+  return false;
+}
+
+function hasNonIdentityScale(style) {
+  if (!style) {
+    return false;
+  }
+  const transform = style.transform;
+  if (!transform || transform === 'none') {
+    return false;
+  }
+  const matrix3d = transform.match(/^matrix3d\((.+)\)$/);
+  if (matrix3d) {
+    const values = matrix3d[1].split(',').map((value) => Number.parseFloat(value.trim()));
+    if (values.length >= 16) {
+      const scaleX = values[0];
+      const scaleY = values[5];
+      return Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01;
+    }
+    return false;
+  }
+  const matrix2d = transform.match(/^matrix\((.+)\)$/);
+  if (!matrix2d) {
+    return false;
+  }
+  const values = matrix2d[1].split(',').map((value) => Number.parseFloat(value.trim()));
+  if (values.length < 4) {
+    return false;
+  }
+  const [a, b, c, d] = values;
+  const scaleX = Math.sqrt(a * a + b * b);
+  const scaleY = Math.sqrt(c * c + d * d);
+  return Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01;
 }

@@ -7,7 +7,8 @@ A Chrome side-panel extension that gives you fine-grained control over video pla
 - **Keyboard shortcuts** – Reset, increase/decrease speed, rewind/advance, and toggle the overlay with single-key shortcuts. All defaults are configurable.
 - **Dynamic jump steps** – Define multiple rewind/advance step durations (e.g., `2, 5, 10` seconds) and cycle through them with a shortcut.
 - **Hold-to fast-forward / slow motion** – Hold the advance key to temporarily jump to a configurable fast-forward rate (default `2×`) or hold the rewind key to drop into slow motion (default `0.4×`), then snap back to your last speed when released.
-- **Per-video speed overlay** – Floating badge shows the current playback rate **and** the active rewind/advance step (e.g., `1.3×/10`), can be dragged anywhere (even on videos rendered inside shadow DOM) and auto-adjusts in fullscreen.
+- **Volume multipliers** – Cycle through a customizable list of volume multipliers (e.g., `150/100/50%`) with a single key; every page load starts un-capped at `100%`, and values above `100%` boost the audio.
+- **Per-video speed overlay** – Floating badge shows the current playback rate, the active rewind/advance step, and (when capped) the volume preset (e.g., `1.3×/10/75%`), can be dragged anywhere (even on videos rendered inside shadow DOM) and auto-adjusts in fullscreen.
 - **Custom overlay styling** – Adjust font size, background opacity, and overlay position; temporarily show the overlay even when hidden while changing speeds.
 - **Side panel settings** – Chrome side panel groups settings into Playback Controls and Speed Overlay sections for quick edits, including preferred speed and whether to show the overlay by default.
 
@@ -44,6 +45,9 @@ my_browser_assistant/
 | Rewind/advance step presets         | `2, 5, 10`   | Editable comma-separated list of seconds                         |
 | Slow-motion speed                   | `0.4`        | Playback rate while holding the rewind key                       |
 | Fast-forward speed                  | `2`          | Playback rate while holding the advance key                      |
+| Cycle volume multiplier key         | `q`          | Loops through the preset list (100 → 50 → 25 → …), resets to 100% after reload |
+| Volume multiplier presets (%)       | `100, 50, 25` | Presets applied when pressing the cycle key (enter >100 to boost) |
+| Current volume preset (%)           | `100`        | Active cap applied to every video until you cycle to another    |
 | Show overlay by default             | `true`       | Controls initial overlay visibility                              |
 | Toggle overlay key                  | `v`          | Shows/hides the overlay                                          |
 | Overlay font size                   | `18px`       | Adjustable via side panel                                        |

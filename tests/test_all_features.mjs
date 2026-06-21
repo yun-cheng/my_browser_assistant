@@ -3,6 +3,13 @@ import puppeteer from 'puppeteer';
 const EXT_PATH = '/Users/zeke/Projects/my_ai_assistant';
 
 const HEADLESS = process.env.HEADLESS === 'true';
+const args = [
+  `--disable-extensions-except=${EXT_PATH}`,
+  `--load-extension=${EXT_PATH}`,
+  '--no-first-run',
+  `--user-data-dir=/tmp/puppeteer_${Date.now()}`
+];
+if (process.env.CI) args.push('--no-sandbox', '--disable-setuid-sandbox');
 
 let passed = 0;
 let failed = 0;
@@ -34,12 +41,7 @@ async function holdAndCheck(page, key, holdMs, checkMs) {
 
 const browser = await puppeteer.launch({
   headless: HEADLESS,
-  args: [
-    `--disable-extensions-except=${EXT_PATH}`,
-    `--load-extension=${EXT_PATH}`,
-    '--no-first-run',
-    `--user-data-dir=/tmp/puppeteer_${Date.now()}`
-  ]
+  args
 });
 
 console.log('=== My Browser Assistant — Full Feature Test (video-verified) ===\n');

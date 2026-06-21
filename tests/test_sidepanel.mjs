@@ -3,6 +3,13 @@ import puppeteer from 'puppeteer';
 const EXT_PATH = '/Users/zeke/Projects/my_ai_assistant';
 
 const HEADLESS = process.env.HEADLESS === 'true';
+const args = [
+  `--disable-extensions-except=${EXT_PATH}`,
+  `--load-extension=${EXT_PATH}`,
+  '--no-first-run',
+  `--user-data-dir=/tmp/puppeteer_sp_${Date.now()}`
+];
+if (process.env.CI) args.push('--no-sandbox', '--disable-setuid-sandbox');
 
 let passed = 0;
 let failed = 0;
@@ -19,12 +26,7 @@ function assert(name, condition) {
 
 const browser = await puppeteer.launch({
   headless: HEADLESS,
-  args: [
-    `--disable-extensions-except=${EXT_PATH}`,
-    `--load-extension=${EXT_PATH}`,
-    '--no-first-run',
-    `--user-data-dir=/tmp/puppeteer_sp_${Date.now()}`
-  ]
+  args
 });
 
 console.log('=== My Browser Assistant — Side Panel Integration Test ===\n');

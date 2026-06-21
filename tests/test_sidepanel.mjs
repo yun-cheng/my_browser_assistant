@@ -2,6 +2,8 @@ import puppeteer from 'puppeteer';
 
 const EXT_PATH = '/Users/zeke/Projects/my_ai_assistant';
 
+const HEADLESS = process.env.HEADLESS === 'true';
+
 let passed = 0;
 let failed = 0;
 
@@ -16,7 +18,7 @@ function assert(name, condition) {
 }
 
 const browser = await puppeteer.launch({
-  headless: false,
+  headless: HEADLESS,
   args: [
     `--disable-extensions-except=${EXT_PATH}`,
     `--load-extension=${EXT_PATH}`,

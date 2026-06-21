@@ -1,11 +1,11 @@
+import { MAX_VOLUME_MULTIPLIER } from '../src/lib/constants.js';
+import { normalizeKey } from '../src/lib/utils.js';
 import {
   DEFAULT_SETTINGS,
   getSettings,
   saveSettings,
   subscribeToSettings
 } from '../src/lib/settings.js';
-
-const MAX_VOLUME_MULTIPLIER = 4;
 
 const form = document.getElementById('settingsForm');
 const restoreDefaultsButton = document.getElementById('restoreDefaults');
@@ -116,19 +116,7 @@ function formatKeyLabel(value) {
   if (!value) {
     return '';
   }
-
-  if (value.length === 1) {
-    return value.toUpperCase();
-  }
-
   return value.toUpperCase();
-}
-
-function normalizeKey(key) {
-  if (!key) {
-    return '';
-  }
-  return key.length === 1 ? key.toLowerCase() : key.toLowerCase();
 }
 
 function persistSettingsFromForm() {

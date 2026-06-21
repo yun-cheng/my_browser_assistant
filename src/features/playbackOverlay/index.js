@@ -1,15 +1,17 @@
+import { isApproximately, normalizeKey, clamp } from '../../lib/utils.js';
+import {
+  MAX_VOLUME_MULTIPLIER,
+  MIN_FAST_FORWARD_SPEED,
+  MAX_FAST_FORWARD_SPEED,
+  MIN_SLOW_MOTION_SPEED,
+  MAX_SLOW_MOTION_SPEED,
+  FAST_FORWARD_HOLD_DELAY,
+  OVERLAY_ID_ATTR,
+  DEFAULT_REWIND_ADVANCE_STEP_PRESETS
+} from '../../lib/constants.js';
 import { ensurePlaybackOverlayStyles } from './styles.js';
 import { PlaybackController } from './controller.js';
 import { saveSettings, DEFAULT_SETTINGS } from '../../lib/settings.js';
-
-const DEFAULT_REWIND_ADVANCE_STEP_PRESETS = [2, 5, 10];
-const FAST_FORWARD_HOLD_DELAY = 250;
-const MIN_FAST_FORWARD_SPEED = 1;
-const MAX_FAST_FORWARD_SPEED = 16;
-const MIN_SLOW_MOTION_SPEED = 0.1;
-const MAX_SLOW_MOTION_SPEED = 1;
-const MAX_VOLUME_MULTIPLIER = 4;
-const OVERLAY_ID_ATTR = 'data-my-browser-assistant-overlay-id';
 
 export class PlaybackOverlayFeature {
   constructor(settings) {
@@ -587,14 +589,13 @@ export class PlaybackOverlayFeature {
       .map((value) => Number(value))
       .filter((value) => Number.isFinite(value))
       .map((value) => (value > MAX_VOLUME_MULTIPLIER + 0.0001 ? value / 100 : value))
-      .map((value) => Math.min(Math.max(value, 0.05), MAX_VOLUME_MULTIPLIER))
+      .map((value) => clamp(value, 0.05, MAX_VOLUME_MULTIPLIER))
       .filter(
         (value, index, arr) =>
           index === arr.findIndex((candidate) => Math.abs(candidate - value) < 0.0001)
       );
     return normalized.length ? normalized : DEFAULT_SETTINGS.volumePresetPercents;
   }
-
 
   scheduleFastForward(controller) {
     if (!controller) {
@@ -721,28 +722,14 @@ function clampFastForwardSpeed(value) {
   if (!Number.isFinite(value)) {
     return DEFAULT_SETTINGS.fastForwardSpeed;
   }
-  return Math.min(Math.max(value, MIN_FAST_FORWARD_SPEED), MAX_FAST_FORWARD_SPEED);
+  return clamp(value, MIN_FAST_FORWARD_SPEED, MAX_FAST_FORWARD_SPEED);
 }
 
 function clampSlowMotionSpeed(value) {
   if (!Number.isFinite(value)) {
     return DEFAULT_SETTINGS.slowMotionSpeed;
   }
-  return Math.min(Math.max(value, MIN_SLOW_MOTION_SPEED), MAX_SLOW_MOTION_SPEED);
-}
-
-function normalizeKey(key) {
-  if (typeof key !== 'string') {
-    return '';
-  }
-  return key.length === 1 ? key.toLowerCase() : key.toLowerCase();
-}
-
-function isApproximately(value, target, threshold = 0.01) {
-  if (!Number.isFinite(value) || !Number.isFinite(target)) {
-    return false;
-  }
-  return Math.abs(value - target) <= threshold;
+  return clamp(value, MIN_SLOW_MOTION_SPEED, MAX_SLOW_MOTION_SPEED);
 }
 
 function clampVolumePresetValue(value) {
@@ -753,7 +740,7 @@ function clampVolumePresetValue(value) {
   if (normalized > 1.0001) {
     normalized /= 100;
   }
-  return Math.min(Math.max(normalized, 0.05), MAX_VOLUME_MULTIPLIER);
+  return clamp(normalized, 0.05, MAX_VOLUME_MULTIPLIER);
 }
 
 function clampPositionValue(value) {
@@ -767,7 +754,7 @@ function clampRatioValue(value) {
   if (!Number.isFinite(value)) {
     return null;
   }
-  return Math.min(Math.max(Math.round(value * 1000) / 1000, 0), 1);
+  return clamp(Math.round(value * 1000) / 1000, 0, 1);
 }
 
 function isTypingTarget(target) {

@@ -26,7 +26,10 @@ my_browser_assistant/
    ├─ content/loader.js           # Injects the main content module
    ├─ content/main.js             # Boots the PlaybackOverlayFeature
    ├─ features/playbackOverlay/   # Controller, overlay, styles
-   └─ lib/settings.js             # Storage + defaults for all settings
+   └─ lib/
+      ├─ settings.js              # Storage + defaults for all settings
+      ├─ constants.js             # Shared constants (speed limits, DOM attr, etc.)
+      └─ utils.js                 # Shared helpers (clamp, isApproximately, normalizeKey)
 ```
 
 ## Default Settings

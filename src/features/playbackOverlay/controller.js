@@ -1,9 +1,11 @@
+import {
+  MIN_PLAYBACK_SPEED,
+  MAX_PLAYBACK_SPEED,
+  MIN_VOLUME_MULTIPLIER,
+  MAX_VOLUME_MULTIPLIER
+} from '../../lib/constants.js';
+import { clamp } from '../../lib/utils.js';
 import { PlaybackOverlay } from './overlay.js';
-
-const MIN_SPEED = 0.07;
-const MAX_SPEED = 16;
-const MIN_VOLUME_MULTIPLIER = 0.05;
-const MAX_VOLUME_MULTIPLIER = 4;
 
 let sharedAudioContext = null;
 let sharedAudioContextFailed = false;
@@ -120,7 +122,7 @@ export class PlaybackController {
   }
 
   setSpeed(value) {
-    const next = clamp(value, MIN_SPEED, MAX_SPEED);
+    const next = clamp(value, MIN_PLAYBACK_SPEED, MAX_PLAYBACK_SPEED);
     const rounded = Math.round(next * 10) / 10;
     this.video.playbackRate = rounded;
     this.overlay.update(rounded);
@@ -255,10 +257,6 @@ export class PlaybackController {
       }
     }
   }
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
 }
 
 function getSharedAudioContext() {

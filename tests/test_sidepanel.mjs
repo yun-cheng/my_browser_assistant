@@ -33,11 +33,20 @@ console.log('=== My Browser Assistant — Side Panel Integration Test ===\n');
 
 // ── 0. Discover extension ID ──────────────────────────────────────────
 
-await new Promise(r => setTimeout(r, 3000));
+// Navigate to a page to trigger the extension (MV3 service workers are lazy)
+const triggerPage = await browser.newPage();
+await triggerPage.goto('about:blank', { waitUntil: 'domcontentloaded' });
+await new Promise(r => setTimeout(r, 2000));
+await triggerPage.close();
 
-const bgTarget = browser.targets().find(
-  t => t.type() === 'service_worker'
-);
+// Retry: service worker may take time to register on fresh startup
+let bgTarget = null;
+for (let i = 0; i < 10; i++) {
+  bgTarget = browser.targets().find(t => t.type() === 'service_worker');
+  if (bgTarget) break;
+  console.log(`  ⏳ Waiting for service worker (attempt ${i + 1})...`);
+  await new Promise(r => setTimeout(r, 1000));
+}
 const extId = bgTarget ? new URL(bgTarget.url()).hostname : null;
 console.log(`0. Discovery`);
 console.log(`──────────────`);

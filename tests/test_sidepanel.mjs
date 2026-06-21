@@ -9,7 +9,7 @@ const args = [
   '--no-first-run',
   `--user-data-dir=/tmp/puppeteer_sp_${Date.now()}`
 ];
-if (process.env.CI) args.push('--no-sandbox', '--disable-setuid-sandbox');
+if (process.env.CI) args.push('--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu');
 
 let passed = 0;
 let failed = 0;

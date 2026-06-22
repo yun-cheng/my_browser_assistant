@@ -1,0 +1,26 @@
+{
+  "name": "my_ai_assistant",
+  "version": "1.0.0",
+  "description": "A Chrome side-panel extension that gives you fine-grained control over video playback on any site. It adds keyboard-driven playback controls, a draggable speed overlay, and a streamlined UI for quickly tweaking shortcuts and overlay styling.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yun-cheng/my_browser_assistant.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yun-cheng/my_browser_assistant/issues"
+  },
+  "homepage": "https://github.com/yun-cheng/my_browser_assistant#readme",
+  "dependencies": {
+    "puppeteer": "^25.1.0"
+  }
+}

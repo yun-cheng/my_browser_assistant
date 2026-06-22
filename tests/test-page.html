@@ -5,62 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Test Video</title>
 <style>
-body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #111; flex-direction: column; gap: 0; }
-.video-wrapper { position: relative; width: 800px; }
-video { display: block; width: 100%; }
-/* Custom persistent progress bar */
-.progress-bar {
-  width: 800px; height: 5px;
-  background: #333;
-  position: relative;
-  margin: 0;
-}
-.progress-bar .fill {
-  height: 100%; width: 0%;
-  background: linear-gradient(90deg, #e53935, #ff6f00);
-  transition: width 0.1s linear;
-}
-/* Time display */
-.time-display {
-  width: 800px;
-  display: flex; justify-content: space-between;
-  font: 12px/1.6 system-ui, sans-serif;
-  color: rgba(255,255,255,0.5);
-  padding: 0 2px;
-}
+body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #111; }
+video { max-width: 100%; }
+/* Prevent native controls from auto-hiding */
+video::-webkit-media-controls { opacity: 1 !important; }
 </style>
 </head>
 <body>
-<div class="video-wrapper">
-  <video id="testVideo" width="800" controls autoplay muted loop>
-    <source src="test-video.mp4" type="video/mp4">
-  </video>
-  <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
-  <div class="time-display">
-    <span id="currentTime">0:00</span>
-    <span id="duration">0:00</span>
-  </div>
-</div>
+<video id="testVideo" width="800" controls autoplay muted loop>
+  <source src="test-video.mp4" type="video/mp4">
+</video>
 <script>
 const v = document.getElementById('testVideo');
-const fill = document.getElementById('progressFill');
-const ctEl = document.getElementById('currentTime');
-const durEl = document.getElementById('duration');
 v.muted = true;
 v.playbackRate = 1;
 v.play().catch(() => {});
-v.addEventListener('timeupdate', () => {
-  if (v.duration) {
-    fill.style.width = (v.currentTime / v.duration * 100) + '%';
-    const fmt = t => { const m = Math.floor(t/60); const s = Math.floor(t%60); return m + ':' + String(s).padStart(2,'0'); };
-    ctEl.textContent = fmt(v.currentTime);
-    durEl.textContent = fmt(v.duration);
-  }
-});
-v.addEventListener('loadedmetadata', () => {
-  const fmt = t => { const m = Math.floor(t/60); const s = Math.floor(t%60); return m + ':' + String(s).padStart(2,'0'); };
-  durEl.textContent = fmt(v.duration);
-});
 </script>
 </body>
 </html>

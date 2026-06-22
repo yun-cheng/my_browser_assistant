@@ -148,9 +148,9 @@ async function recordSpeedGif(page, cap, show) {
   // Wait 2 seconds
   await wait(2000, 'Speed: 1.3×');
 
-  // Final
-  await show(page, [], 'Customize in side panel');
-  await wait(800);
+  // End — just a clean last frame
+  await show(page, [], '');
+  await captureLoop(400);
 }
 
 // ──────────────────────────────────────────
@@ -201,8 +201,9 @@ async function recordHoldGif(page, cap, show) {
   // Hold X — fast-forward 5 seconds
   await holdKey('x', 'Hold X — fast-forward 2×', 5000);
 
-  await show(page, [], 'All keys customizable in side panel');
-  await captureLoop(600);
+  // End — clean last frame
+  await show(page, [], '');
+  await captureLoop(400);
 }
 
 (async () => {

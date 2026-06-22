@@ -1,0 +1,232 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bg-color: #f2f2f2;
+  --card-bg: #ffffff;
+  --border-color: rgba(0, 0, 0, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --text-color: #111;
+  --muted-color: #555;
+  --input-bg: #fff;
+  --button-bg: #2684ff;
+  --button-bg-hover: #0f6ae0;
+  --button-text: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #1c2127;
+    --card-bg: #2a3038;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --shadow-color: rgba(0, 0, 0, 0.45);
+    --text-color: #f5f6f7;
+    --muted-color: #c1c7d0;
+    --input-bg: #1f252b;
+    --button-bg: #7ab6ff;
+    --button-bg-hover: #8ec0ff;
+    --button-text: #0d1621;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+main {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+header h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+header p {
+  margin: 0;
+  color: var(--muted-color);
+  font-size: 14px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+section {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  display: flex;
+  flex-direction: column;
+}
+
+section h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.field:first-of-type {
+  padding-top: 0;
+}
+
+.field:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.field.single {
+  flex-wrap: nowrap;
+}
+
+.field.single .field-content {
+  justify-content: flex-end;
+}
+
+.field .field-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f4f8;
+}
+
+.field-content {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.inline-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.inline-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-color);
+}
+
+.key-input {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  background: var(--input-bg);
+  color: var(--text-color);
+  cursor: pointer;
+  width: 60px;
+  text-align: center;
+}
+
+.key-input:focus {
+  outline: 2px solid var(--button-bg);
+  border-color: transparent;
+}
+
+.value-label,
+.value-label-inline {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-color);
+}
+
+.value-input {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  width: 90px;
+  text-align: center;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin-top: 8px;
+  color: var(--text-color);
+}
+
+.align-right {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+.align-right input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+input[type='number'] {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 14px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  width: 60px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+button {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: none;
+  background: var(--button-bg);
+  color: var(--button-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease-in-out;
+}
+
+button:hover:not(:disabled) {
+  background: var(--button-bg-hover);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.shortcut-row.single {
+  grid-template-columns: 60px;
+  justify-content: start;
+}

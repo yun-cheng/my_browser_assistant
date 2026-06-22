@@ -3,9 +3,15 @@
 A Chrome extension that gives you keyboard-driven, fine-grained control over video playback on any site. Speed overlay, hold-to fast-forward/slow-motion, volume cycling — all fully customizable via the side panel.
 
 <p align="center">
-  <img src="screenshots/demo.gif" alt="Demo — pressing d to increase speed, a to toggle, Z/X for hold controls" width="700">
+  <img src="screenshots/demo-speed.gif" alt="Speed controls — press d to speed up, a to toggle preferred speed" width="700">
   <br>
-  <em>Demo: speed up with <code>d</code>, toggle preferred speed with <code>a</code>, hold <code>Z</code>/<code>X</code> for slow motion / fast-forward</em>
+  <em>Speed controls: press <code>d</code> to accelerate, <code>a</code> to toggle preferred speed</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/demo-hold.gif" alt="Hold controls — hold Z for slow motion, hold X for fast-forward" width="700">
+  <br>
+  <em>Hold controls: hold <code>Z</code> for slow motion (0.4×), hold <code>X</code> for fast-forward (2×)</em>
 </p>
 
 <p align="center">

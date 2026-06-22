@@ -1,4 +1,5 @@
-const POSITION_FLAG = 'data-my-browser-assistant-positioned';
+import { clamp } from '../../lib/utils.js';
+import { POSITION_FLAG } from '../../lib/constants.js';
 
 export class PlaybackOverlay {
   constructor(
@@ -154,7 +155,7 @@ export class PlaybackOverlay {
 
   setVolumePercent(percent) {
     if (Number.isFinite(percent)) {
-      const clamped = clampNumber(percent, 1, 400);
+      const clamped = clamp(percent, 1, 400);
       if (Math.abs(clamped - 100) < 0.5) {
         this.volumePercent = null;
       } else {
@@ -177,7 +178,7 @@ export class PlaybackOverlay {
   applyAppearance() {
     const size = Number.isFinite(this.fontSize) ? Math.max(this.fontSize, 6) : 14;
     const alpha = Number.isFinite(this.backgroundAlpha)
-      ? clampNumber(this.backgroundAlpha, 0.1, 1)
+      ? clamp(this.backgroundAlpha, 0.1, 1)
       : 0.7;
     this.element.style.fontSize = `${size}px`;
     this.element.style.backgroundColor = `rgba(0, 0, 0, ${alpha})`;
@@ -295,12 +296,12 @@ export class PlaybackOverlay {
     const minY = offsetY;
     const maxX = offsetX + Math.max(videoWidth - overlay.width, 0);
     const maxY = offsetY + Math.max(videoHeight - overlay.height, 0);
-    const clampedX = clampNumber(target.x ?? minX, minX, maxX);
-    const clampedY = clampNumber(target.y ?? minY, minY, maxY);
+    const clampedX = clamp(target.x ?? minX, minX, maxX);
+    const clampedY = clamp(target.y ?? minY, minY, maxY);
     const ratioX =
-      videoWidth > 0 ? clampNumber((clampedX - offsetX) / videoWidth, 0, 1) : this.position.ratioX ?? null;
+      videoWidth > 0 ? clamp((clampedX - offsetX) / videoWidth, 0, 1) : this.position.ratioX ?? null;
     const ratioY =
-      videoHeight > 0 ? clampNumber((clampedY - offsetY) / videoHeight, 0, 1) : this.position.ratioY ?? null;
+      videoHeight > 0 ? clamp((clampedY - offsetY) / videoHeight, 0, 1) : this.position.ratioY ?? null;
     this.position = { ...this.position, x: clampedX, y: clampedY, ratioX, ratioY };
     this.element.style.left = `${clampedX}px`;
     this.element.style.top = `${clampedY}px`;
@@ -444,13 +445,9 @@ function normalizePositionOption(position) {
   return {
     x: Number.isFinite(x) ? x : 0,
     y: Number.isFinite(y) ? y : 0,
-    ratioX: Number.isFinite(ratioX) ? clampNumber(ratioX, 0, 1) : 0.01,
-    ratioY: Number.isFinite(ratioY) ? clampNumber(ratioY, 0, 1) : 0.05
+    ratioX: Number.isFinite(ratioX) ? clamp(ratioX, 0, 1) : 0.01,
+    ratioY: Number.isFinite(ratioY) ? clamp(ratioY, 0, 1) : 0.05
   };
-}
-
-function clampNumber(value, min, max) {
-  return Math.min(Math.max(value, min), max);
 }
 
 function defaultRect() {
@@ -489,13 +486,7 @@ function isElementHidden(element) {
   if (!style) {
     return false;
   }
-  if (style.display === 'none') {
-    return true;
-  }
-  if (style.visibility === 'hidden' || style.visibility === 'collapse') {
-    return true;
-  }
-  return false;
+  return style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse';
 }
 
 function hasNonIdentityScale(style) {
@@ -506,26 +497,22 @@ function hasNonIdentityScale(style) {
   if (!transform || transform === 'none') {
     return false;
   }
-  const matrix3d = transform.match(/^matrix3d\((.+)\)$/);
-  if (matrix3d) {
-    const values = matrix3d[1].split(',').map((value) => Number.parseFloat(value.trim()));
+  const [, matrix3dValues = null] = /^matrix3d\((.+)\)$/.exec(transform) || [];
+  if (matrix3dValues) {
+    const values = matrix3dValues.split(',').map((v) => Number.parseFloat(v.trim()));
     if (values.length >= 16) {
-      const scaleX = values[0];
-      const scaleY = values[5];
-      return Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01;
+      return Math.abs(values[0] - 1) > 0.01 || Math.abs(values[5] - 1) > 0.01;
     }
     return false;
   }
-  const matrix2d = transform.match(/^matrix\((.+)\)$/);
-  if (!matrix2d) {
+  const [, matrixValues = null] = /^matrix\((.+)\)$/.exec(transform) || [];
+  if (!matrixValues) {
     return false;
   }
-  const values = matrix2d[1].split(',').map((value) => Number.parseFloat(value.trim()));
+  const values = matrixValues.split(',').map((v) => Number.parseFloat(v.trim()));
   if (values.length < 4) {
     return false;
   }
   const [a, b, c, d] = values;
-  const scaleX = Math.sqrt(a * a + b * b);
-  const scaleY = Math.sqrt(c * c + d * d);
-  return Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01;
+  return Math.abs(Math.sqrt(a * a + b * b) - 1) > 0.01 || Math.abs(Math.sqrt(c * c + d * d) - 1) > 0.01;
 }

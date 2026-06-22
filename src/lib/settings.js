@@ -1,6 +1,5 @@
-export const SETTINGS_STORAGE_KEY = 'my_browser_assistant_settings';
-
-const MAX_VOLUME_MULTIPLIER = 4;
+import { MAX_VOLUME_MULTIPLIER, SETTINGS_STORAGE_KEY } from './constants.js';
+import { isApproximately } from './utils.js';
 
 export const DEFAULT_SETTINGS = {
   resetKey: 'a',
@@ -144,13 +143,6 @@ function sanitizeStepList(value, fallback) {
     return [...fallback];
   }
   return DEFAULT_SETTINGS.rewindAdvanceStepPresets.slice();
-}
-
-function isApproximately(value, target, threshold = 0.01) {
-  if (!Number.isFinite(value) || !Number.isFinite(target)) {
-    return false;
-  }
-  return Math.abs(value - target) <= threshold;
 }
 
 export async function getSettings() {

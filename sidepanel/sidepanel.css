@@ -105,7 +105,7 @@ section h2 {
   flex: 1;
   font-size: 13px;
   font-weight: 600;
-  color: #f1f4f8;
+  color: var(--text-color);
 }
 
 .field-content {

@@ -1,12 +1,12 @@
-const STYLE_ID = 'my-browser-assistant-playback-overlay-styles';
+import { OVERLAY_STYLE_ID } from '../../lib/constants.js';
 
 export function ensurePlaybackOverlayStyles() {
-  if (document.getElementById(STYLE_ID)) {
+  if (document.getElementById(OVERLAY_STYLE_ID)) {
     return;
   }
 
   const style = document.createElement('style');
-  style.id = STYLE_ID;
+  style.id = OVERLAY_STYLE_ID;
   style.textContent = `
     .my-browser-assistant-overlay {
       position: absolute;

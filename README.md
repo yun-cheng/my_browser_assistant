@@ -2,6 +2,18 @@
 
 A Chrome extension that gives you keyboard-driven, fine-grained control over video playback on any site. Speed overlay, hold-to fast-forward/slow-motion, volume cycling — all fully customizable via the side panel.
 
+<p align="center">
+  <img src="screenshots/overlay-on-video.png" alt="Overlay on video" width="600">
+  <br>
+  <em>Speed overlay showing current rate and active step — press <code>d</code> to increase, <code>s</code> to decrease</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/sidepanel.png" alt="Side panel settings" width="300">
+  <br>
+  <em>Side panel — customize every key binding, speed value, and overlay style in real time</em>
+</p>
+
 ## Features
 
 - **Speed controls** — Toggle between 1× and your preferred speed (default `1.3×`), nudge up/down by a configurable step

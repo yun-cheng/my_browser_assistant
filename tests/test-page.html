@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Video</title>
+<style>
+body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #111; }
+video { max-width: 100%; }
+</style>
+</head>
+<body>
+<video id="testVideo" width="800" controls autoplay muted>
+  <source src="test-video.mp4" type="video/mp4">
+</video>
+<script>
+const v = document.getElementById('testVideo');
+v.muted = true;
+v.playbackRate = 1;
+v.play().catch(() => {});
+</script>
+</body>
+</html>

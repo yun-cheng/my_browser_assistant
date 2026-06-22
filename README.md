@@ -1,87 +1,67 @@
-# My Browser Assistant (Chrome Extension)
+# My Browser Assistant
 
-A Chrome side-panel extension that gives you fine-grained control over video playback on any site. It adds keyboard-driven playback controls, a draggable speed overlay, and a streamlined UI for quickly tweaking shortcuts and overlay styling.
+A Chrome extension that gives you keyboard-driven, fine-grained control over video playback on any site. Speed overlay, hold-to fast-forward/slow-motion, volume cycling — all fully customizable via the side panel.
 
 ## Features
 
-- **Keyboard shortcuts** – Reset, increase/decrease speed, rewind/advance, and toggle the overlay with single-key shortcuts. All defaults are configurable.
-- **Dynamic jump steps** – Define multiple rewind/advance step durations (e.g., `2, 5, 10` seconds) and cycle through them with a shortcut.
-- **Hold-to fast-forward / slow motion** – Hold the advance key to temporarily jump to a configurable fast-forward rate (default `2×`) or hold the rewind key to drop into slow motion (default `0.4×`), then snap back to your last speed when released.
-- **Volume multipliers** – Cycle through a customizable list of volume multipliers (e.g., `150/100/50%`) with a single key; every page load starts un-capped at `100%`, and values above `100%` boost the audio.
-- **Per-video speed overlay** – Floating badge shows the current playback rate, the active rewind/advance step, and (when capped) the volume preset (e.g., `1.3×/10/75%`), can be dragged anywhere (even on videos rendered inside shadow DOM) and auto-adjusts in fullscreen.
-- **Custom overlay styling** – Adjust font size, background opacity, and overlay position; temporarily show the overlay even when hidden while changing speeds.
-- **Side panel settings** – Chrome side panel groups settings into Playback Controls and Speed Overlay sections for quick edits, including preferred speed and whether to show the overlay by default.
+- **Speed controls** — Toggle between 1× and your preferred speed (default `1.3×`), nudge up/down by a configurable step
+- **Hold-to fast-forward / slow motion** — Hold the advance key to temporarily jump to a configurable fast-forward rate, or hold the rewind key to drop into slow motion; snap back on release
+- **Rewind / advance** — Tap to seek by the active step (default `10s`); cycle through multiple step presets
+- **Volume cycling** — Cycle through a list of volume multipliers (allows boosting above 100%)
+- **Overlay** — Floating badge showing speed, active step, and volume preset; draggable, toggleable, persists position across fullscreen
+- **Side panel** — Real-time settings editor, saved via `chrome.storage.sync` across devices
 
-## Project Structure
+## Quick Start
 
-```
-my_browser_assistant/
-├─ manifest.json              # Extension manifest (MV3)
-├─ sidepanel/
-│  ├─ sidepanel.html          # Side panel UI
-│  ├─ sidepanel.css           # Side panel styling
-│  └─ sidepanel.js            # Settings logic (imports src/lib/settings)
-└─ src/
-   ├─ background/serviceWorker.js # Manages side panel behavior/toggling
-   ├─ content/loader.js           # Injects the main content module
-   ├─ content/main.js             # Boots the PlaybackOverlayFeature
-   ├─ features/playbackOverlay/   # Controller, overlay, styles
-   └─ lib/
-      ├─ settings.js              # Storage + defaults for all settings
-      ├─ constants.js             # Shared constants (speed limits, DOM attr, etc.)
-      └─ utils.js                 # Shared helpers (clamp, isApproximately, normalizeKey)
-```
+1. Open `chrome://extensions`, enable **Developer mode**
+2. Click **Load unpacked** and select the `my_browser_assistant` directory
+3. Play any video and use the default shortcuts (see below)
+
+No build step required — the extension is plain JavaScript.
 
 ## Default Settings
 
-| Setting                             | Default      | Notes                                                            |
-| ----------------------------------- | ------------ | ---------------------------------------------------------------- |
-| Toggle preferred speed key          | `a`          | First press jumps to preferred speed, press again to reset to 1× |
-| Preferred speed                     | `1.3`        | Target rate when toggling from 1×                                |
-| Decrease speed key                  | `s`          | Single-key decrement                                             |
-| Increase speed key                  | `d`          | Single-key increment                                             |
-| Speed adjustment step               | `0.1`        | Shared step for both `s` and `d` keys                            |
-| Rewind key (hold for slow motion)   | `z`          | Tap rewinds by the active step; hold enters slow motion          |
-| Advance key (hold for fast-forward) | `x`          | Tap advances by the active step; hold enters fast-forward        |
-| Rewind/advance step                 | `10`         | Current active step (seconds shown on overlay)                   |
-| Switch rewind/advance step key      | `e`          | Cycles through the presets (default loop: 10 → 2 → 5 → 10)       |
-| Rewind/advance step presets         | `2, 5, 10`   | Editable comma-separated list of seconds                         |
-| Slow-motion speed                   | `0.4`        | Playback rate while holding the rewind key                       |
-| Fast-forward speed                  | `2`          | Playback rate while holding the advance key                      |
-| Cycle volume multiplier key         | `q`          | Loops through the preset list (100 → 50 → 25 → …), resets to 100% after reload |
-| Volume multiplier presets (%)       | `100, 50, 25` | Presets applied when pressing the cycle key (enter >100 to boost) |
-| Current volume preset (%)           | `100`        | Active cap applied to every video until you cycle to another    |
-| Show overlay by default             | `true`       | Controls initial overlay visibility                              |
-| Toggle overlay key                  | `v`          | Shows/hides the overlay                                          |
-| Overlay font size                   | `18px`       | Adjustable via side panel                                        |
-| Overlay background alpha            | `0.5`        | `rgba(0,0,0, alpha)` background                                  |
-| Overlay position                    | `x:1%, y:5%` | Stored as ratios so fullscreen keeps relative position           |
+| Key / Setting | Default | Description |
+|---|---|---|
+| `a` | Preferred speed | Toggle between `1×` and `1.3×` |
+| `s` / `d` | Speed step `0.1` | Decrease / increase playback rate |
+| `z` | Rewind `10s` | Tap to rewind; hold for slow motion (`0.4×`) |
+| `x` | Advance `10s` | Tap to advance; hold for fast-forward (`2×`) |
+| `e` | Cycle step presets | Loops: `10s → 2s → 5s → 10s` |
+| `q` | Cycle volume | Loops: `100% → 50% → 25% → 100%` |
+| `v` | Toggle overlay | Show / hide the speed overlay |
+| — | Step presets | `2, 5, 10` seconds |
+| — | Volume presets | `100, 50, 25` (percent, can exceed 100) |
+| — | Overlay position | `x: 1%, y: 5%` (stored as ratios for fullscreen) |
 
-## Development Setup
-
-1. **Install dependencies (optional)** – The extension code is plain JS; no build step is required. If you want to use tooling, run `npm install` to add any future dev dependencies.
-2. **Load the extension**
-   - Open `chrome://extensions` in Chrome.
-   - Enable **Developer mode**.
-   - Click **Load unpacked** and select the `my_browser_assistant` directory.
-3. **Test on any video site**. Use the default shortcuts or open the side panel (click the extension icon) to adjust settings.
-
-## Side Panel Usage
-
-- **Playback Controls** – Configure keyboard shortcuts, preferred speed, and step/seek values.
-- **Speed Overlay** – Enable/disable the overlay, set the toggle key, update font/background/position, and drag the overlay on any playing video to store its position.
-
-Settings are saved via `chrome.storage.sync`, so they follow you across devices.
-
-## Notes & Tips
-
-- The overlay works on standard videos and shadow DOM-based players (`<hls-video>`, etc.).
-- When you adjust speed, the overlay temporarily shows even if hidden, so you always get feedback.
-- Position values are stored as percentages; going fullscreen keeps the overlay in the same relative spot.
+All keys, speed values, step presets, volume presets, and overlay styling are configurable via the side panel.
 
 ## Architecture
 
-- **Background service worker** – Registers the side panel and listens for the extension icon click so the panel toggles open/closed per-window.
-- **Content module** – Injected on every page and boots the single `PlaybackOverlayFeature`. It watches the DOM (including shadow roots) for `<video>` elements, instantiates controllers, and dispatches keyboard shortcuts.
-- **PlaybackController/Overlay** – Each controller wraps a `<video>` element, handles rate/seeking changes, and syncs the draggable overlay (showing `speed/current-step`). The overlay persists ratios so it stays relative in fullscreen.
-- **Side panel** – A standalone UI hooked into `chrome.storage.sync`. Settings flow: user input → `sidepanel.js` → `saveSettings` → storage → content script via `subscribeToSettings`.
+```
+my_browser_assistant/
+├─ manifest.json                        # MV3 manifest
+├─ sidepanel/
+│  ├─ sidepanel.html / .css / .js       # Settings UI
+├─ src/
+│  ├─ background/serviceWorker.js       # Side panel lifecycle
+│  ├─ content/
+│  │  ├─ loader.js                      # Injects main module
+│  │  └─ main.js                        # Boots PlaybackOverlayFeature
+│  ├─ features/playbackOverlay/         # Controller, overlay, styles
+│  └─ lib/
+│     ├─ settings.js                    # Storage + defaults
+│     ├─ constants.js                   # Shared limits and keys
+│     └─ utils.js                       # Shared helpers
+```
+
+- **Content script** is injected on every page, watches for `<video>` elements (including shadow DOM players), and attaches a `PlaybackController` to each.
+- **Controller** handles rate changes, seeking, volume cycling, and hold-to FF/slow-mo logic.
+- **Overlay** displays the current state (`speed / step / volume`) and can be dragged to any position; ratios persist across fullscreen transitions.
+- **Side panel** reads from and writes to `chrome.storage.sync`; the content script subscribes to storage changes for real-time sync.
+
+## Notes
+
+- Overlay works on standard `<video>` elements and shadow DOM-based players (`<hls-video>`, etc.).
+- Volume presets above 100% boost the audio; state resets to 100% on each page load.
+- When the overlay is hidden, speed changes still trigger a brief flash so you always get feedback.

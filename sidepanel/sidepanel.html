@@ -215,6 +215,38 @@
           </div>
         </section>
 
+        <section>
+          <h2>Volume Controls</h2>
+          <div class="field">
+            <label class="field-label" for="cycleVolumePresetKey">Cycle volume multiplier</label>
+            <div class="field-content">
+              <div class="inline-control">
+                <label class="inline-label" for="cycleVolumePresetKey">Key</label>
+                <input
+                  id="cycleVolumePresetKey"
+                  class="key-input"
+                  type="text"
+                  data-setting="cycleVolumePresetKey"
+                  placeholder="Press a key"
+                  readonly
+                />
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="volumePresetPercents">Multiplier presets (%)</label>
+            <div class="field-content">
+              <input
+                id="volumePresetPercents"
+                type="text"
+                class="value-input"
+                inputmode="decimal"
+                placeholder="100, 50, 25"
+              />
+            </div>
+          </div>
+        </section>
+
         <div class="actions">
           <button type="button" id="restoreDefaults">Restore defaults</button>
         </div>

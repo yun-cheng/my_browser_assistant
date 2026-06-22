@@ -5,6 +5,8 @@ import {
   subscribeToSettings
 } from '../src/lib/settings.js';
 
+const MAX_VOLUME_MULTIPLIER = 4;
+
 const form = document.getElementById('settingsForm');
 const restoreDefaultsButton = document.getElementById('restoreDefaults');
 const showCurrentSpeedInput = document.getElementById('showCurrentSpeed');
@@ -15,6 +17,7 @@ const valueInputMap = new Map(valueInputs.map((input) => [input.dataset.valueSet
 const overlayPosXInput = document.getElementById('overlayPosX');
 const overlayPosYInput = document.getElementById('overlayPosY');
 const rewindAdvanceStepPresetsInput = document.getElementById('rewindAdvanceStepPresets');
+const volumePresetPercentsInput = document.getElementById('volumePresetPercents');
 
 let currentSettings = { ...DEFAULT_SETTINGS };
 let unsubscribe = null;
@@ -58,6 +61,10 @@ function wireEvents() {
   }
   showCurrentSpeedInput.addEventListener('change', persistSettingsFromForm);
 
+  if (volumePresetPercentsInput) {
+    volumePresetPercentsInput.addEventListener('change', persistSettingsFromForm);
+  }
+
   restoreDefaultsButton.addEventListener('click', async () => {
     await saveSettings({ ...DEFAULT_SETTINGS });
   });
@@ -79,6 +86,9 @@ function render(settings) {
   showCurrentSpeedInput.checked = Boolean(settings.showCurrentSpeed);
   if (rewindAdvanceStepPresetsInput) {
     rewindAdvanceStepPresetsInput.value = formatStepList(settings.rewindAdvanceStepPresets);
+  }
+  if (volumePresetPercentsInput) {
+    volumePresetPercentsInput.value = formatPercentList(settings.volumePresetPercents);
   }
 }
 
@@ -150,6 +160,10 @@ function collectFormSettings() {
     rewindAdvanceStepPresetsInput?.value,
     currentSettings?.rewindAdvanceStepPresets ?? DEFAULT_SETTINGS.rewindAdvanceStepPresets
   );
+  settings.volumePresetPercents = parsePercentListInput(
+    volumePresetPercentsInput?.value,
+    currentSettings?.volumePresetPercents ?? DEFAULT_SETTINGS.volumePresetPercents
+  );
 
   return settings;
 }
@@ -193,4 +207,29 @@ function parseStepListInput(value, fallback) {
     .map((part) => Number(part))
     .filter((num) => Number.isFinite(num) && num >= 0.1 && num <= 600);
   return parts.length ? parts : [...fallbackList];
+}
+
+function formatPercentList(presets) {
+  if (!Array.isArray(presets) || !presets.length) {
+    return (DEFAULT_SETTINGS.volumePresetPercents || [])
+      .map((value) => Math.round(value * 100))
+      .join(', ');
+  }
+  return presets.map((value) => Math.round(value * 100)).join(', ');
+}
+
+function parsePercentListInput(value, fallback) {
+  const fallbackList = Array.isArray(fallback) && fallback.length ? fallback : DEFAULT_SETTINGS.volumePresetPercents;
+  if (typeof value !== 'string') {
+    return [...fallbackList];
+  }
+  const parts = value
+    .split(/[\s,]+/)
+    .map((part) => Number(part))
+    .filter((num) => Number.isFinite(num));
+  const normalized = parts
+    .map((num) => (num > MAX_VOLUME_MULTIPLIER + 0.0001 ? num / 100 : num))
+    .map((num) => Math.min(Math.max(num, 0.05), MAX_VOLUME_MULTIPLIER))
+    .filter((num, index, arr) => index === arr.findIndex((candidate) => Math.abs(candidate - num) < 0.0001));
+  return normalized.length ? normalized : [...fallbackList];
 }

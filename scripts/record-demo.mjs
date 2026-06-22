@@ -35,7 +35,13 @@ function show(page, keys, cap) {
   }, {keys, cap});
 }
 
-async function recordGif(name, fn) {
+function fmtTime(s) {
+  const m = Math.floor(s/60);
+  const sec = Math.floor(s%60);
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+async function recordGif(name, fps, fn) {
   const FRAMES = join(SHOTS, 'frames');
   if (existsSync(FRAMES)) rmSync(FRAMES, { recursive: true });
   mkdirSync(FRAMES, { recursive: true });
@@ -62,7 +68,6 @@ async function recordGif(name, fn) {
     await new Promise(r => setTimeout(r, 2500));
     await injectUI(page);
 
-    // Start video from beginning
     await page.evaluate(() => {
       const v = document.querySelector('video');
       if (v) { v.currentTime = 0; v.muted = true; v.playbackRate = 1; v.play().catch(() => {}); }
@@ -80,8 +85,9 @@ async function recordGif(name, fn) {
 
   // Generate GIF
   const output = join(SHOTS, `${name}.gif`);
-  const cmd = `ffmpeg -y -framerate 4 -i ${FRAMES}/%03d.png ` +
-    `-vf "fps=4,scale=700:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=64[p];[s1][p]paletteuse=dither=floyd_steinberg" ` +
+  const interval = 1000 / fps;
+  const cmd = `ffmpeg -y -framerate ${fps} -i ${FRAMES}/%03d.png ` +
+    `-vf "fps=${fps},scale=700:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=64[p];[s1][p]paletteuse=dither=floyd_steinberg" ` +
     `-loop 0 ${output} 2>&1 | tail -3`;
   execSync(cmd).toString();
   console.log(`  ✅ ${name}.gif (${(statSync(output).size/1024).toFixed(0)} KB)`);
@@ -92,119 +98,119 @@ async function recordGif(name, fn) {
 
 // ──────────────────────────────────────────
 // GIF 1: Speed Controls
+// Sequence: d×3 → 1.3x, wait 2s, a, wait 2s, a, wait 2s
 // ──────────────────────────────────────────
 async function recordSpeedGif(page, cap, show) {
-  // Helper: press key, wait, continue capturing
-  const doKey = async (key, label, waitMs = 700) => {
-    await show(page, [key], label);
-    await new Promise(r => setTimeout(r, 200));
-    await page.keyboard.press(key);
-    // Capture multiple frames during wait
-    const interval = 200;
-    let elapsed = 0;
-    while (elapsed < waitMs) {
-      await new Promise(r => setTimeout(r, interval));
-      await cap(page);
-      elapsed += interval;
-    }
-  };
-
-  const wait = async (ms, label = '') => {
-    if (label) await show(page, [], label);
-    const interval = 200;
+  const captureLoop = async (ms) => {
+    const every = 250;
     let elapsed = 0;
     while (elapsed < ms) {
-      await new Promise(r => setTimeout(r, interval));
+      await new Promise(r => setTimeout(r, every));
       await cap(page);
-      elapsed += interval;
+      elapsed += every;
     }
   };
 
-  // Start: show 1× speed
+  const pressKey = async (key, label, afterMs = 0) => {
+    await show(page, [key], label);
+    await new Promise(r => setTimeout(r, 200));
+    await cap(page);
+    await page.keyboard.press(key);
+    if (afterMs > 0) await captureLoop(afterMs);
+  };
+
+  const wait = async (ms, label) => {
+    if (label) await show(page, [], label);
+    await captureLoop(ms);
+  };
+
+  // Initial: 1×, progress bar visible
   await show(page, [], 'Speed: 1×');
-  await wait(600);
+  await captureLoop(600);
 
-  // Speed up ×3
-  await doKey('d', 'd → +0.1', 600);
-  await doKey('d', 'd → +0.1', 600);
-  await doKey('d', 'd → speed 1.3×', 800);
-  await wait(800, 'Speed: 1.3×');
+  // d × 3 → 1.3×
+  await pressKey('d', 'd → speed up', 500);
+  await pressKey('d', 'd → speed up', 500);
+  await pressKey('d', 'd → speed 1.3×', 500);
 
-  // Toggle to 1×
-  await doKey('a', 'a → toggle', 700);
-  await wait(600, 'Speed: 1×');
+  // Wait 2 seconds — see 1.3× clearly
+  await wait(2000, 'Speed: 1.3×');
 
-  // Toggle back to 1.3×
-  await doKey('a', 'a → toggle again', 700);
-  await wait(800, 'Speed: 1.3×');
+  // a → toggle to 1×
+  await pressKey('a', 'a → toggle to 1×', 500);
+
+  // Wait 2 seconds — see 1× clearly
+  await wait(2000, 'Speed: 1×');
+
+  // a → toggle back to 1.3×
+  await pressKey('a', 'a → toggle to 1.3×', 500);
+
+  // Wait 2 seconds
+  await wait(2000, 'Speed: 1.3×');
 
   // Final
-  await show(page, [], 'Customizable in side panel');
+  await show(page, [], 'Customize in side panel');
   await wait(800);
 }
 
 // ──────────────────────────────────────────
-// GIF 2: Hold Controls (slow-mo & fast-forward)
+// GIF 2: Hold Controls
+// Hold Z 5s, release, hold X 5s, release
 // ──────────────────────────────────────────
 async function recordHoldGif(page, cap, show) {
-  const wait = async (ms, label = '') => {
-    if (label) await show(page, [], label);
-    const interval = 200;
+  const captureLoop = async (ms) => {
+    const every = 250;
     let elapsed = 0;
     while (elapsed < ms) {
-      await new Promise(r => setTimeout(r, interval));
+      await new Promise(r => setTimeout(r, every));
       await cap(page);
-      elapsed += interval;
+      elapsed += every;
     }
   };
 
-  const holdKey = async (key, label, holdMs = 3000) => {
+  const holdKey = async (key, label, holdMs) => {
     await show(page, [key.toUpperCase()], label);
     await new Promise(r => setTimeout(r, 200));
     await cap(page);
     await page.keyboard.down(key);
-    const interval = 200;
-    let elapsed = 0;
-    while (elapsed < holdMs) {
-      await new Promise(r => setTimeout(r, interval));
-      await cap(page);
-      elapsed += interval;
-    }
+    await captureLoop(holdMs);
     await page.keyboard.up(key);
     await show(page, [], 'Released — back to normal');
-    await new Promise(r => setTimeout(r, 300));
-    await cap(page);
+    await captureLoop(600);
   };
 
-  // Start: 1× speed
-  await show(page, [], 'Speed: 1×');
-  await wait(600);
-
-  // Hold Z — slow motion for 3s
-  await holdKey('z', 'Hold Z — slow motion 0.4×', 3000);
-  await wait(800, 'Back to 1×');
-
-  // Seek back to where the video has more content
+  // Initial: 1×, video playing, progress bar advancing
   await page.evaluate(() => {
     const v = document.querySelector('video');
-    if (v) { v.playbackRate = 1; v.currentTime = 2; }
+    if (v) { v.currentTime = 0; v.playbackRate = 1; }
   });
-  await wait(400);
+  await show(page, [], 'Speed: 1× — progress bar visible');
+  await captureLoop(800);
 
-  // Hold X — fast-forward for 3s
-  await holdKey('x', 'Hold X — fast-forward 2×', 3000);
-  await wait(600, 'Back to 1×');
+  // Hold Z — slow motion 5 seconds
+  await holdKey('z', 'Hold Z — slow motion 0.4×', 5000);
+
+  // Reset video position for next demo
+  await page.evaluate(() => {
+    const v = document.querySelector('video');
+    if (v) { v.currentTime = 3; v.playbackRate = 1; }
+  });
+  await show(page, [], 'Speed: 1×');
+  await captureLoop(600);
+
+  // Hold X — fast-forward 5 seconds
+  await holdKey('x', 'Hold X — fast-forward 2×', 5000);
 
   await show(page, [], 'All keys customizable in side panel');
-  await wait(600);
+  await captureLoop(600);
 }
 
 (async () => {
-  console.log('=== GIF 1: Speed & Toggle ===');
-  await recordGif('demo-speed', recordSpeedGif);
+  console.log('=== GIF 1: Speed & Toggle (3 fps) ===');
+  await recordGif('demo-speed', 3, recordSpeedGif);
 
-  console.log('=== GIF 2: Hold Controls ===');
-  await recordGif('demo-hold', recordHoldGif);
+  console.log('=== GIF 2: Hold Controls (3 fps) ===');
+  await recordGif('demo-hold', 3, recordHoldGif);
 
   console.log('Done.');
 })();

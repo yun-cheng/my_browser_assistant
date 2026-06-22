@@ -102,7 +102,7 @@ async function recordGif(name, fps, fn) {
 // ──────────────────────────────────────────
 async function recordSpeedGif(page, cap, show) {
   const captureLoop = async (ms) => {
-    const every = 250;
+    const every = 200;
     let elapsed = 0;
     while (elapsed < ms) {
       await new Promise(r => setTimeout(r, every));
@@ -159,7 +159,7 @@ async function recordSpeedGif(page, cap, show) {
 // ──────────────────────────────────────────
 async function recordHoldGif(page, cap, show) {
   const captureLoop = async (ms) => {
-    const every = 250;
+    const every = 200;
     let elapsed = 0;
     while (elapsed < ms) {
       await new Promise(r => setTimeout(r, every));
@@ -207,11 +207,11 @@ async function recordHoldGif(page, cap, show) {
 }
 
 (async () => {
-  console.log('=== GIF 1: Speed & Toggle (3 fps) ===');
-  await recordGif('demo-speed', 3, recordSpeedGif);
+  console.log('=== GIF 1: Speed & Toggle (5 fps) ===');
+  await recordGif('demo-speed', 5, recordSpeedGif);
 
-  console.log('=== GIF 2: Hold Controls (3 fps) ===');
-  await recordGif('demo-hold', 3, recordHoldGif);
+  console.log('=== GIF 2: Hold Controls (5 fps) ===');
+  await recordGif('demo-hold', 5, recordHoldGif);
 
   console.log('Done.');
 })();

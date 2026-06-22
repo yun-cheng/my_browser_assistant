@@ -5,21 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Test Video</title>
 <style>
-body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #111; }
-video { max-width: 100%; }
-/* Prevent native controls from auto-hiding */
-video::-webkit-media-controls { opacity: 1 !important; }
+body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #111; flex-direction: column; }
+video { max-width: 100%; display: block; }
+/* Minimal progress indicator — native controls auto-hide in headless, so this stays visible */
+#progress-track {
+  width: 800px; height: 4px;
+  background: rgba(255,255,255,0.15);
+  position: relative;
+}
+#progress-fill {
+  height: 100%; width: 0%;
+  background: #e53935;
+  transition: width 0.15s linear;
+}
 </style>
 </head>
 <body>
 <video id="testVideo" width="800" controls autoplay muted loop>
   <source src="test-video.mp4" type="video/mp4">
 </video>
+<div id="progress-track"><div id="progress-fill"></div></div>
 <script>
 const v = document.getElementById('testVideo');
+const fill = document.getElementById('progress-fill');
 v.muted = true;
 v.playbackRate = 1;
 v.play().catch(() => {});
+// Update progress bar on each timeupdate
+v.addEventListener('timeupdate', () => {
+  if (v.duration) fill.style.width = (v.currentTime / v.duration * 100) + '%';
+});
 </script>
 </body>
 </html>

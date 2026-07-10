@@ -1,6 +1,10 @@
 import puppeteer from 'puppeteer';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const EXT_PATH = '/Users/zeke/Projects/my_ai_assistant';
+// Resolve the extension dir from this file's location so the test loads the copy it
+// actually lives in — robust to a project rename and portable across machines.
+const EXT_PATH = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const HEADLESS = process.env.HEADLESS === 'true';
 const args = [

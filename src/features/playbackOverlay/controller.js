@@ -21,7 +21,8 @@ export class PlaybackController {
       stepSeconds,
       overlayId,
       onRateChange,
-      onPositionChange
+      onPositionChange,
+      onVolumeReset
     } = {}
   ) {
     this.video = video;
@@ -45,6 +46,7 @@ export class PlaybackController {
       this.overlay.setStepSeconds(stepSeconds);
     }
     this.onRateChange = onRateChange;
+    this.onVolumeReset = onVolumeReset;
     this.overlay.attach();
 
     this.handleRateChange = () => {
@@ -61,8 +63,26 @@ export class PlaybackController {
       }
     };
 
+    this.handleVideoReloaded = () => {
+      // A new source loaded into this <video> (e.g. YouTube SPA navigation reuses the
+      // same element for the next video). Don't carry the previous video's volume cap
+      // over — release it so the new video plays at its own natural volume and the
+      // overlay stops showing a stale percentage.
+      this.nativeVolumeLimit = 1;
+      this.previousNativeVolume = null;
+      this.volumeMultiplier = 1;
+      if (this.audioPipeline) {
+        this.applyAudioPipelineGain(1);
+      }
+      this.overlay.setVolumePercent(100);
+      if (typeof this.onVolumeReset === 'function') {
+        this.onVolumeReset();
+      }
+    };
+
     this.video.addEventListener('ratechange', this.handleRateChange);
     this.video.addEventListener('volumechange', this.handleVolumeChange);
+    this.video.addEventListener('loadedmetadata', this.handleVideoReloaded);
     this.handleRateChange();
     this.enforceNativeVolumeLimit();
   }
@@ -160,6 +180,7 @@ export class PlaybackController {
   destroy() {
     this.video.removeEventListener('ratechange', this.handleRateChange);
     this.video.removeEventListener('volumechange', this.handleVolumeChange);
+    this.video.removeEventListener('loadedmetadata', this.handleVideoReloaded);
     this.teardownAudioPipeline();
     this.overlay.detach();
   }

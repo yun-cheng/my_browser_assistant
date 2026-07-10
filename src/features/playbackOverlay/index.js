@@ -224,6 +224,7 @@ export class PlaybackOverlayFeature {
       stepSeconds: this.getRewindAdvanceStep(),
       onRateChange: (rate) => this.handleControllerRateChange(rate),
       onPositionChange: (position) => this.handleOverlayPositionChange(position),
+      onVolumeReset: () => this.handleControllerVolumeReset(),
       overlayId
     });
     const listeners = this.createActivationListeners(video);
@@ -449,6 +450,13 @@ export class PlaybackOverlayFeature {
 
   hasChildFrames() {
     return Boolean(document.querySelector('iframe'));
+  }
+
+  handleControllerVolumeReset() {
+    // A video reloaded (e.g. YouTube SPA navigation released its volume cap). Drop the
+    // carried-over preset so the next cycle starts fresh from 100% and stays in sync
+    // with the now-uncapped native volume.
+    this.volumePresetPercent = 1;
   }
 
   isShortcutKey(key) {

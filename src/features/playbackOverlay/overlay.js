@@ -180,8 +180,8 @@ export class PlaybackOverlay {
     const alpha = Number.isFinite(this.backgroundAlpha)
       ? clamp(this.backgroundAlpha, 0.1, 1)
       : 0.7;
-    this.element.style.fontSize = `${size}px`;
-    this.element.style.backgroundColor = `rgba(0, 0, 0, ${alpha})`;
+    this.element.style.setProperty('font-size', `${size}px`, 'important');
+    this.element.style.setProperty('background-color', `rgba(0, 0, 0, ${alpha})`, 'important');
   }
 
   applyPosition() {
@@ -367,7 +367,9 @@ export class PlaybackOverlay {
     style.setProperty('width', 'max-content', 'important');
     style.setProperty('height', 'max-content', 'important');
     style.setProperty('max-width', '100%', 'important');
-    style.setProperty('max-height', '100%', 'important');
+    // NB: no max-height. Some players (e.g. YouTube Shorts) host the <video> in a
+    // zero-height wrapper; capping the badge to the parent height collapses it to the
+    // padding-only ~8px. The badge is a single text line, so it never needs a cap.
     style.setProperty('box-sizing', 'border-box', 'important');
   }
 

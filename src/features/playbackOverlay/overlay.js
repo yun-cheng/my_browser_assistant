@@ -30,6 +30,7 @@ export class PlaybackOverlay {
     this.parentElement = null;
     this.shadowHost = null;
     this.attached = false;
+    this.standaloneMedia = false;
     this.dragState = null;
     this.resizeObserver = null;
     this.handlePointerDown = this.handlePointerDown.bind(this);
@@ -55,7 +56,16 @@ export class PlaybackOverlay {
     const { parent, computedStyle } = this.resolveParentElement();
     const style = computedStyle;
 
-    if (style && style.position === 'static') {
+    // Chrome's built-in media viewer (opening a bare video/audio file) lays the
+    // <video> out as position:absolute sized against the initial containing block
+    // (the viewport). Forcing position:relative onto <html>/<body> would move the
+    // video's containing block to that zero-height element and collapse it to a few
+    // pixels. In that case, pin the overlay to the viewport with position:fixed and
+    // leave ancestor positioning untouched.
+    this.standaloneMedia = isStandaloneMediaDocument();
+    if (this.standaloneMedia) {
+      this.element.style.setProperty('position', 'fixed', 'important');
+    } else if (style && style.position === 'static') {
       this.parentOriginalPosition = parent.style.position;
       parent.setAttribute(POSITION_FLAG, 'true');
       parent.style.position = 'relative';
@@ -94,6 +104,12 @@ export class PlaybackOverlay {
         parent.style.position = this.parentOriginalPosition || '';
         parent.removeAttribute(POSITION_FLAG);
       }
+    }
+    if (this.standaloneMedia) {
+      // Restore the base absolute positioning in case this overlay is re-attached
+      // to a normal (non-media-document) page later.
+      this.element.style.setProperty('position', 'absolute', 'important');
+      this.standaloneMedia = false;
     }
     this.parentElement = null;
     this.parentOriginalPosition = null;
@@ -454,6 +470,24 @@ function normalizePositionOption(position) {
 
 function defaultRect() {
   return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+}
+
+// True when the page is Chrome's synthesized viewer for a bare media file (e.g.
+// navigating straight to a .mp4). Such documents report the media MIME as their
+// contentType and hold a single <video>/<audio> laid out against the viewport.
+function isStandaloneMediaDocument() {
+  const contentType = (document.contentType || '').toLowerCase();
+  if (contentType.startsWith('video/') || contentType.startsWith('audio/')) {
+    return true;
+  }
+  const body = document.body;
+  if (body && body.children.length === 1) {
+    const only = body.firstElementChild;
+    if (only && (only.tagName === 'VIDEO' || only.tagName === 'AUDIO')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function hasRectSize(rect) {

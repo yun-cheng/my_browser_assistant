@@ -1,9 +1,27 @@
+import { KEY_RELAY_MESSAGE } from '../lib/constants.js';
+
 const PANEL_OPTIONS = {
   path: 'sidepanel/sidepanel.html',
   enabled: true
 };
 
 const openWindowIds = new Set();
+
+// Rebroadcast a shortcut keypress from the frame that received it (usually the top
+// frame, which has focus but no <video>) to every frame in the same tab, so the frame
+// that owns the video — e.g. a cross-origin YouTube embed — can act on it.
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (!message || message.type !== KEY_RELAY_MESSAGE) {
+    return;
+  }
+  const tabId = sender?.tab?.id;
+  if (typeof tabId !== 'number') {
+    return;
+  }
+  chrome.tabs.sendMessage(tabId, message).catch(() => {
+    // No receiving frames (e.g. tab closed mid-relay) — safe to ignore.
+  });
+});
 
 async function configureSidePanel(context) {
   try {

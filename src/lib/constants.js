@@ -25,3 +25,10 @@ export const OVERLAY_STYLE_ID = 'my-browser-assistant-playback-overlay-styles';
 
 // ── Default rewind/advance step presets ──
 export const DEFAULT_REWIND_ADVANCE_STEP_PRESETS = [2, 5, 10];
+
+// ── Cross-frame keyboard relay ──
+// Videos embedded via a cross-origin iframe (e.g. the YouTube IFrame player) live in
+// a different frame than the one that has keyboard focus. Shortcut keys pressed in the
+// focused (top) frame are relayed through the background service worker to every frame
+// in the tab, so the frame that actually owns the <video> can act on them.
+export const KEY_RELAY_MESSAGE = 'my_browser_assistant_key_relay';

@@ -7,7 +7,8 @@ import {
   MAX_SLOW_MOTION_SPEED,
   FAST_FORWARD_HOLD_DELAY,
   OVERLAY_ID_ATTR,
-  DEFAULT_REWIND_ADVANCE_STEP_PRESETS
+  DEFAULT_REWIND_ADVANCE_STEP_PRESETS,
+  KEY_RELAY_MESSAGE
 } from '../../lib/constants.js';
 import { ensurePlaybackOverlayStyles } from './styles.js';
 import { PlaybackController } from './controller.js';
@@ -63,6 +64,7 @@ export class PlaybackOverlayFeature {
     this.overlayIdCounter = 1;
     this.handleKeydown = this.handleKeydown.bind(this);
     this.handleKeyup = this.handleKeyup.bind(this);
+    this.handleRuntimeMessage = this.handleRuntimeMessage.bind(this);
   }
 
   init() {
@@ -71,11 +73,17 @@ export class PlaybackOverlayFeature {
     this.observeDom();
     document.addEventListener('keydown', this.handleKeydown, true);
     document.addEventListener('keyup', this.handleKeyup, true);
+    if (chrome?.runtime?.onMessage?.addListener) {
+      chrome.runtime.onMessage.addListener(this.handleRuntimeMessage);
+    }
   }
 
   dispose() {
     document.removeEventListener('keydown', this.handleKeydown, true);
     document.removeEventListener('keyup', this.handleKeyup, true);
+    if (chrome?.runtime?.onMessage?.removeListener) {
+      chrome.runtime.onMessage.removeListener(this.handleRuntimeMessage);
+    }
     this.stopFastForward(false);
     this.stopSlowMotion(false);
     if (this.mutationObserver) {
@@ -317,6 +325,14 @@ export class PlaybackOverlayFeature {
     const controller = this.getPrimaryController();
 
     if (!controller) {
+      // No video in this frame. If a child iframe exists, the video is likely in it
+      // (e.g. a cross-origin YouTube embed) but never receives this keystroke because
+      // it isn't focused — relay it there. We deliberately do NOT preventDefault: on
+      // pages with no video the relay finds no taker, and swallowing the key would
+      // break unrelated single-key shortcuts on the host page (Gmail, etc.).
+      if (this.isShortcutKey(key) && this.hasChildFrames()) {
+        this.relayKeyCommand('keydown', event.key);
+      }
       return;
     }
 
@@ -397,6 +413,17 @@ export class PlaybackOverlayFeature {
       return;
     }
     const key = normalizeKey(event.key);
+    // Hold-to-fast-forward / hold-to-slow-mo state lives in the frame that owns the
+    // video. If that's a sibling frame, relay the release there (see handleKeydown).
+    if (!this.hasLocalControllers()) {
+      if (
+        (key === this.settings.advanceKey || key === this.settings.rewindKey) &&
+        this.hasChildFrames()
+      ) {
+        this.relayKeyCommand('keyup', event.key);
+      }
+      return;
+    }
     if (key === this.settings.advanceKey) {
       const pendingController = this.fastForwardState.pendingAdvance;
       const pendingStep = this.fastForwardState.pendingAdvanceStep;
@@ -413,6 +440,53 @@ export class PlaybackOverlayFeature {
       if (!wasActive && pendingController && Number.isFinite(pendingStep)) {
         pendingController.rewind(pendingStep);
       }
+    }
+  }
+
+  hasLocalControllers() {
+    return this.controllers.size > 0;
+  }
+
+  hasChildFrames() {
+    return Boolean(document.querySelector('iframe'));
+  }
+
+  isShortcutKey(key) {
+    const s = this.settings;
+    return (
+      key === s.resetKey ||
+      key === s.decreaseKey ||
+      key === s.increaseKey ||
+      key === s.rewindKey ||
+      key === s.advanceKey ||
+      key === s.switchRewindAdvanceKey ||
+      key === s.cycleVolumePresetKey ||
+      key === s.toggleOverlayKey
+    );
+  }
+
+  relayKeyCommand(kind, key) {
+    try {
+      chrome?.runtime?.sendMessage?.({ type: KEY_RELAY_MESSAGE, kind, key });
+    } catch (_) {
+      // Extension context may be gone (e.g. reload) — nothing we can do.
+    }
+  }
+
+  handleRuntimeMessage(message) {
+    if (!message || message.type !== KEY_RELAY_MESSAGE) {
+      return;
+    }
+    // Only the frame that actually owns a video should act on a relayed key. Every
+    // other frame in the tab receives the broadcast too and ignores it here.
+    if (!this.hasLocalControllers()) {
+      return;
+    }
+    const syntheticEvent = createSyntheticKeyEvent(message.key);
+    if (message.kind === 'keydown') {
+      this.handleKeydown(syntheticEvent);
+    } else if (message.kind === 'keyup') {
+      this.handleKeyup(syntheticEvent);
     }
   }
 
@@ -716,6 +790,24 @@ export class PlaybackOverlayFeature {
       this.slowMotionState.timerId = null;
     }
   }
+}
+
+// Builds an event-shaped object so a relayed key command can flow through the same
+// handleKeydown/handleKeyup logic as a real DOM event. Relayed keys only ever pass the
+// modifier/typing guards on the sending side, so those fields are always benign here;
+// preventDefault/stopPropagation are no-ops since there's no real event to cancel.
+function createSyntheticKeyEvent(key) {
+  return {
+    key,
+    defaultPrevented: false,
+    repeat: false,
+    altKey: false,
+    metaKey: false,
+    ctrlKey: false,
+    target: null,
+    preventDefault() {},
+    stopPropagation() {}
+  };
 }
 
 function clampFastForwardSpeed(value) {
